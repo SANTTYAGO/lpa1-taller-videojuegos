@@ -1,27 +1,29 @@
 # main.py
 from models.personaje import Personaje
-from models.enemigo import Enemigo
-from models.objeto import Tesoro
-from core.combate import SistemaCombate
+from models.objeto import Equipamiento
 
 def main():
-    # Instanciamos entidades
-    heroe = Personaje(nombre="Caballero", puntos_vida=50, ataque=18, defensa=10)
-    gargola = Enemigo(nombre="Gárgola Oscura", puntos_vida=30, ataque=12, defensa=8, tipo="volador")
-    moneda_oro = Tesoro(nombre="Cáliz Antiguo", valor_monetario=250)
-
-    print("--- FASE DE EXPLORACIÓN ---")
+    print("--- PRUEBA DE PROGRESIÓN Y EQUIPAMIENTO ---\n")
+    
+    # 1. Instanciar al jugador
+    heroe = Personaje(nombre="Caballero", puntos_vida=100, ataque=20, defensa=15)
     heroe.mostrar_estadisticas()
+    print("\n------------------------------------------------")
+
+    # 2. Encontrar y equipar un objeto (R3.3)
+    espada_acero = Equipamiento(nombre="Espada de Acero", aumento_ataque=12, aumento_defensa=2, precio_compra=150, precio_venta=75)
+    heroe.recolectar_objeto(espada_acero)
+    heroe.equipar(espada_acero)
     
-    # Probamos la recolección (R3.2)
-    print("\nEl héroe encuentra algo brillante en el suelo...")
-    heroe.recolectar_objeto(moneda_oro)
+    print("\n--- ESTADÍSTICAS TRAS EQUIPAR ARMA ---")
+    heroe.mostrar_estadisticas()
+    print("------------------------------------------------\n")
+
+    # 3. Simular ganancia de experiencia por derrotar a un enemigo (R6.1 y R6.2)
+    print("⚔️ El héroe ha derrotado a un Orco de Élite...")
+    heroe.ganar_experiencia(120) # Esto debería provocar que suba de nivel directamente
     
-    # Probamos el combate (R5.1 y R5.2)
-    print("\n¡Una sombra desciende del cielo!")
-    SistemaCombate.iniciar_combate(heroe, gargola)
-    
-    print("\n--- ESTADO FINAL ---")
+    print("\n--- ESTADÍSTICAS TRAS SUBIR DE NIVEL ---")
     heroe.mostrar_estadisticas()
 
 if __name__ == "__main__":
