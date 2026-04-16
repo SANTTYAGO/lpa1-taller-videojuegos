@@ -1,29 +1,29 @@
 # main.py
 from models.personaje import Personaje
-from models.objeto import Equipamiento
+from core.escenario import Escenario
 
 def main():
-    print("--- PRUEBA DE PROGRESIÓN Y EQUIPAMIENTO ---\n")
+    print("--- GENERANDO EL MUNDO DE JUEGO ---\n")
     
-    # 1. Instanciar al jugador
-    heroe = Personaje(nombre="Caballero", puntos_vida=100, ataque=20, defensa=15)
-    heroe.mostrar_estadisticas()
-    print("\n------------------------------------------------")
-
-    # 2. Encontrar y equipar un objeto (R3.3)
-    espada_acero = Equipamiento(nombre="Espada de Acero", aumento_ataque=12, aumento_defensa=2, precio_compra=150, precio_venta=75)
-    heroe.recolectar_objeto(espada_acero)
-    heroe.equipar(espada_acero)
+    # Instanciamos al jugador
+    heroe = Personaje(nombre="Explorador", puntos_vida=100, ataque=15, defensa=10)
     
-    print("\n--- ESTADÍSTICAS TRAS EQUIPAR ARMA ---")
-    heroe.mostrar_estadisticas()
-    print("------------------------------------------------\n")
-
-    # 3. Simular ganancia de experiencia por derrotar a un enemigo (R6.1 y R6.2)
-    print("⚔️ El héroe ha derrotado a un Orco de Élite...")
-    heroe.ganar_experiencia(120) # Esto debería provocar que suba de nivel directamente
+    # 1. Generamos el escenario completo (R4.1, R4.2, R4.3)
+    mundo = Escenario()
+    print("¡El mundo ha sido creado! El mapa consta de 20 zonas misteriosas.")
     
-    print("\n--- ESTADÍSTICAS TRAS SUBIR DE NIVEL ---")
+    # 2. Simulamos la exploración de los primeros 5 cuartos
+    print("\n--- INICIANDO EXPLORACIÓN ---")
+    for i in range(5): # Recorremos de la zona índice 0 al 4
+        zona_actual = mundo.zonas[i]
+        zona_actual.mostrar_info()
+        
+        # Pequeña interacción de ejemplo
+        if zona_actual.objeto:
+            heroe.recolectar_objeto(zona_actual.objeto)
+            zona_actual.objeto = None # Lo quitamos del mapa
+            
+    print("\n--- ESTADO DEL INVENTARIO ---")
     heroe.mostrar_estadisticas()
 
 if __name__ == "__main__":
