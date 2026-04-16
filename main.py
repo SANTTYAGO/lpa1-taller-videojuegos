@@ -1,29 +1,74 @@
 # main.py
 from models.personaje import Personaje
 from core.escenario import Escenario
+from core.combate import SistemaCombate
+
+# Constantes de Victoria
+PUNTAJE_VICTORIA = 500
+TOTAL_ZONAS = 20
+
+def evaluar_victoria(heroe: Personaje) -> bool:
+    # R7.1: Victoria por Exploración
+    if heroe.zonas_exploradas >= TOTAL_ZONAS:
+        print("\n👑 ¡VICTORIA! Has explorado todos los rincones del mapa. Eres un verdadero aventurero.")
+        return True
+        
+    # R7.3: Victoria por Puntaje
+    if heroe.puntaje >= PUNTAJE_VICTORIA:
+        print(f"\n👑 ¡VICTORIA! Has alcanzado {heroe.puntaje} puntos, asegurando tu fama y fortuna.")
+        return True
+        
+    return False
 
 def main():
-    print("--- GENERANDO EL MUNDO DE JUEGO ---\n")
+    print("--- INICIANDO AVENTURA (VERSIÓN TEXTO) ---\n")
     
-    # Instanciamos al jugador
-    heroe = Personaje(nombre="Explorador", puntos_vida=100, ataque=15, defensa=10)
-    
-    # 1. Generamos el escenario completo (R4.1, R4.2, R4.3)
+    heroe = Personaje(nombre="Caballero", puntos_vida=150, ataque=25, defensa=15)
     mundo = Escenario()
-    print("¡El mundo ha sido creado! El mapa consta de 20 zonas misteriosas.")
     
-    # 2. Simulamos la exploración de los primeros 5 cuartos
-    print("\n--- INICIANDO EXPLORACIÓN ---")
-    for i in range(5): # Recorremos de la zona índice 0 al 4
-        zona_actual = mundo.zonas[i]
-        zona_actual.mostrar_info()
+    juego_activo = True
+    zona_actual_idx = 0
+
+    # Bucle Principal de Juego
+    while juego_activo and zona_actual_idx < TOTAL_ZONAS:
+        zona = mundo.zonas[zona_actual_idx]
+        zona.mostrar_info()
+        heroe.registrar_exploracion()
         
-        # Pequeña interacción de ejemplo
-        if zona_actual.objeto:
-            heroe.recolectar_objeto(zona_actual.objeto)
-            zona_actual.objeto = None # Lo quitamos del mapa
+        # Interacción con la zona
+        if zona.enemigo:
+            SistemaCombate.iniciar_combate(heroe, zona.enemigo)
+            if heroe.esta_vivo():
+                heroe.ganar_experiencia(50)
+                heroe.ganar_puntaje(100) # Gana puntos al vencer enemigos
+                
+                # R7.2: Verificar si derrotamos al Jefe Final
+                if zona.enemigo.nombre == "Rey Demonio":
+                    print("\n👑 ¡VICTORIA SUPREMA! El Rey Demonio ha caído. Has salvado el mundo.")
+                    break
+            else:
+                juego_activo = False # Game Over
+                
+        elif zona.objeto:
+            if hasattr(zona.objeto, 'dano_explosion'):
+                print(f"💥 ¡Pisas una {zona.objeto.nombre}! Recibes {zona.objeto.dano_explosion} de daño.")
+                heroe.recibir_dano(zona.objeto.dano_explosion)
+                if not heroe.esta_vivo():
+                    print("💀 Has muerto por una trampa. Fin del juego.")
+                    juego_activo = False
+            else:
+                heroe.recolectar_objeto(zona.objeto)
+                heroe.ganar_puntaje(50) # Gana puntos al encontrar objetos
+                
+        # Evaluación de victoria general (Puntaje o Exploración)
+        if evaluar_victoria(heroe):
+            break
             
-    print("\n--- ESTADO DEL INVENTARIO ---")
+        # Avanzar a la siguiente zona simulando input del jugador
+        input("\nPresiona ENTER para avanzar a la siguiente zona...")
+        zona_actual_idx += 1
+
+    print("\n--- RESUMEN FINAL ---")
     heroe.mostrar_estadisticas()
 
 if __name__ == "__main__":

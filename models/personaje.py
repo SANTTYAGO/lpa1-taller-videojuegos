@@ -10,6 +10,8 @@ class Personaje:
         self.defensa = defensa
         self.nivel = 1
         self.experiencia = 0
+        self.puntaje = 0
+        self.zonas_exploradas = 0
         self.inventario = []
         self.equipamiento_actual = None # R3.3: Espacio para el arma/armadura equipada
 
@@ -45,6 +47,11 @@ class Personaje:
             self.inventario.remove(equipamiento) # Lo sacamos del inventario al usarlo
         print(f"⚔️ {self.nombre} se ha equipado '{equipamiento.nombre}' (+{equipamiento.aumento_ataque} ATK, +{equipamiento.aumento_defensa} DEF).")
 
+    def recibir_dano(self, cantidad: int):
+        self.puntos_vida -= cantidad
+        if self.puntos_vida < 0:
+            self.puntos_vida = 0
+
     # Requerimientos R6.1 y R6.2: Ganar experiencia y subir de nivel
     def ganar_experiencia(self, cantidad: int):
         self.experiencia += cantidad
@@ -66,3 +73,10 @@ class Personaje:
         
         print(f"\n🎉 ¡Felicidades! {self.nombre} ha alcanzado el Nivel {self.nivel}! 🎉")
         print("Tus atributos han aumentado.")
+
+    def ganar_puntaje(self, cantidad: int):
+        self.puntaje += cantidad
+        print(f"🌟 +{cantidad} Puntos! (Puntaje Total: {self.puntaje})")
+
+    def registrar_exploracion(self):
+        self.zonas_exploradas += 1

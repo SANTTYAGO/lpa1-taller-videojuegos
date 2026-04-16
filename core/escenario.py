@@ -32,31 +32,38 @@ class Escenario:
         self.generar_entorno()
 
     def generar_entorno(self):
-        # R4.3: Zonas de venta (Establecemos 2 tiendas aleatorias en el mapa)
-        tiendas_ids = random.sample(range(20), 2)
+        # 1. Configurar tiendas aleatorias (evitando la zona 20)
+        tiendas_ids = random.sample(range(19), 2)
         for i in tiendas_ids:
             self.zonas[i].es_tienda = True
             self.zonas[i].nombre = "Refugio del Mercader"
 
-        # R4.2: Distribución de Elementos
-        # Repartimos 17 elementos aleatorios en las zonas que no son tiendas
-        zonas_disponibles = [z for z in self.zonas if not z.es_tienda]
-        zonas_seleccionadas = random.sample(zonas_disponibles, 17)
+        # 2. Configurar el Jefe Final en la última zona (R7.2)
+        zona_final = self.zonas[-1] # La zona 20
+        zona_final.nombre = "Guarida del Rey Demonio"
+        zona_final.enemigo = Enemigo(
+            nombre="Rey Demonio", 
+            puntos_vida=200, 
+            ataque=30, 
+            defensa=20, 
+            tipo="terrestre"
+        )
+
+        # 3. Distribuir Elementos en el resto del mapa
+        zonas_disponibles = [z for z in self.zonas[:-1] if not z.es_tienda]
+        zonas_seleccionadas = random.sample(zonas_disponibles, 16) # 16 para dejar espacios vacíos
         
         for zona in zonas_seleccionadas:
-            # 50% de probabilidad de que aparezca un enemigo o un objeto
             if random.choice([True, False]):
-                # Generar enemigo aleatorio
                 tipos = ["volador", "terrestre"]
                 zona.enemigo = Enemigo(
-                    nombre=random.choice(["Esqueleto", "Limo", "Murciélago", "Goblin"]),
+                    nombre=random.choice(["Esqueleto", "Limo", "Murciélago"]),
                     puntos_vida=random.randint(20, 50),
                     ataque=random.randint(5, 15),
                     defensa=random.randint(2, 8),
                     tipo=random.choice(tipos)
                 )
             else:
-                # Generar objeto aleatorio
                 if random.choice([True, False]):
                     zona.objeto = Tesoro("Bolsa de Monedas", random.randint(10, 100))
                 else:
