@@ -14,6 +14,11 @@ class Enemigo:
 
     def esta_vivo(self) -> bool:
         return self.puntos_vida > 0
+    
+    def recibir_dano(self, cantidad: int):
+        self.puntos_vida -= cantidad
+        if self.puntos_vida < 0:
+            self.puntos_vida = 0
 
     def mostrar_estadisticas(self):
         print(f"--- {self.nombre} (Tipo: {self.tipo.capitalize()}) ---")
