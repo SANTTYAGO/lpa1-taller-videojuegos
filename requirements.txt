@@ -1,1 +1,1 @@
-# librerías
+pygame-ce==2.5.7
