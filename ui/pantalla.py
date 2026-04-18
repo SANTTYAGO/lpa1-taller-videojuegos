@@ -9,7 +9,7 @@ from core.combate import SistemaCombate
 ANCHO = 800
 ALTO = 600
 FPS = 60
-TAMANO_TILE = 64 # Mantenemos el tamaño más grande
+TAMANO_TILE = 64 
 VELOCIDAD = 5
 
 # Paleta de colores
@@ -44,20 +44,23 @@ class MotorGrafico:
         if self.enemigo:
             self.enemigo_rect = pygame.Rect(600, 300, TAMANO_TILE, TAMANO_TILE)
 
-        # NUEVO: Controladores de Animación
+        # Controladores de Animación
         self.frame_index = 0
         self.tiempo_animacion = 0
-        self.VELOCIDAD_ANIMACION = 120 # Milisegundos entre cada frame (ajústalo a tu gusto)
-        self.accion_heroe = "IDLE" # Puede ser IDLE o WALK
-        self.mirando_izquierda = False # Para voltear el sprite al caminar hacia atrás
+        self.VELOCIDAD_ANIMACION = 120 
+        self.accion_heroe = "IDLE" 
+        self.mirando_izquierda = False 
+        
+        # NUEVO: Controladores visuales de Combate
+        self.efecto_actual = None # "HEROE_ATACA" o "ENEMIGO_ATACA"
+        self.tiempo_efecto = 0    # Temporizador para saber cuándo detener el ataque
 
         self.cargar_sprites()
 
     def extraer_frames(self, ruta, escala):
-        """Corta una hoja de sprites horizontal en una lista de cuadros individuales."""
         hoja = pygame.image.load(ruta).convert_alpha()
         alto = hoja.get_height()
-        columnas = hoja.get_width() // alto # Asume que los frames son cuadrados
+        columnas = hoja.get_width() // alto 
         
         frames = []
         for i in range(columnas):
@@ -71,16 +74,21 @@ class MotorGrafico:
         try:
             escala_mapa = (TAMANO_TILE, TAMANO_TILE) 
             
-            # Cargar listas de frames para el héroe
-            ruta_idle = os.path.join("assets", "Heroe", "Soldier", "Soldier-Idle.png")
-            ruta_walk = os.path.join("assets", "Heroe", "Soldier", "Soldier-Walk.png")
+            # Héroe
+            ruta_idle_h = os.path.join("assets", "Heroe", "Soldier", "Soldier-Idle.png")
+            ruta_walk_h = os.path.join("assets", "Heroe", "Soldier", "Soldier-Walk.png")
+            ruta_attack_h = os.path.join("assets", "Heroe", "Soldier", "Soldier-Attack01.png")
             
-            self.anim_heroe_idle = self.extraer_frames(ruta_idle, escala_mapa)
-            self.anim_heroe_walk = self.extraer_frames(ruta_walk, escala_mapa)
+            self.anim_heroe_idle = self.extraer_frames(ruta_idle_h, escala_mapa)
+            self.anim_heroe_walk = self.extraer_frames(ruta_walk_h, escala_mapa)
+            self.anim_heroe_attack = self.extraer_frames(ruta_attack_h, escala_mapa)
 
-            # Enemigo (por ahora solo la animación de respirar/idle)
-            ruta_enemigo = os.path.join("assets", "Enemigo", "Orc", "Orc-Idle.png")
-            self.anim_enemigo_idle = self.extraer_frames(ruta_enemigo, escala_mapa)
+            # Enemigo
+            ruta_idle_e = os.path.join("assets", "Enemigo", "Orc", "Orc-Idle.png")
+            ruta_attack_e = os.path.join("assets", "Enemigo", "Orc", "Orc-Attack01.png")
+            
+            self.anim_enemigo_idle = self.extraer_frames(ruta_idle_e, escala_mapa)
+            self.anim_enemigo_attack = self.extraer_frames(ruta_attack_e, escala_mapa)
 
             # Suelo
             ruta_suelo = os.path.join("assets", "Suelo", "Grass_Middle.png")
@@ -88,7 +96,7 @@ class MotorGrafico:
             self.img_suelo = pygame.transform.scale(self.img_suelo, escala_mapa)
             
             self.usar_sprites = True
-            print("✅ Animaciones cargadas correctamente.")
+            print("✅ Sprites y ataques cargados correctamente.")
         except Exception as e:
             print(f"⚠️ Error cargando animaciones: {e}")
 
@@ -104,12 +112,17 @@ class MotorGrafico:
             self.verificar_colisiones()
 
     def manejar_teclas_combate(self, evento):
-        # Mantenemos tu lógica de combate intacta
         if self.turno_actual == "JUGADOR":
             if evento.key == pygame.K_a:
+                # Disparar animación de ataque
+                self.efecto_actual = "HEROE_ATACA"
+                self.tiempo_efecto = pygame.time.get_ticks()
+                self.frame_index = 0 # Reiniciar cuadro para ataque limpio
+                
                 dano = SistemaCombate.calcular_dano(self.heroe.ataque, self.enemigo.defensa)
                 self.enemigo.recibir_dano(dano)
                 self.mensaje_combate = f"¡{self.heroe.nombre} ataca! Causa {dano} puntos de daño."
+                
                 if not self.enemigo.esta_vivo():
                     self.turno_actual = "VICTORIA"
                 else:
@@ -117,9 +130,15 @@ class MotorGrafico:
 
         elif self.turno_actual == "ENEMIGO":
             if evento.key == pygame.K_SPACE:
+                # Disparar animación de contraataque
+                self.efecto_actual = "ENEMIGO_ATACA"
+                self.tiempo_efecto = pygame.time.get_ticks()
+                self.frame_index = 0
+                
                 dano = SistemaCombate.calcular_dano(self.enemigo.ataque, self.heroe.defensa)
                 self.heroe.recibir_dano(dano)
                 self.mensaje_combate = f"¡{self.enemigo.nombre} contraataca y causa {dano} de daño!"
+                
                 if not self.heroe.esta_vivo():
                     self.turno_actual = "DERROTA"
                 else:
@@ -129,6 +148,7 @@ class MotorGrafico:
             if evento.key == pygame.K_RETURN:
                 self.heroe.ganar_experiencia(100)
                 self.estado = "EXPLORACION"
+                self.efecto_actual = None
                 
         elif self.turno_actual == "DERROTA":
             if evento.key == pygame.K_RETURN:
@@ -153,7 +173,6 @@ class MotorGrafico:
             self.jugador_y += VELOCIDAD
             moviendo = True
 
-        # Decidir qué animación usar
         if moviendo:
             self.accion_heroe = "WALK"
         else:
@@ -170,6 +189,7 @@ class MotorGrafico:
                 self.turno_actual = "JUGADOR"
                 self.mensaje_combate = f"¡Emboscada! {self.enemigo.nombre} te ataca."
                 self.jugador_x -= 40 
+                self.efecto_actual = None # Limpiar efectos de combates previos
 
     def dibujar_hud(self):
         panel_rect = pygame.Rect(0, ALTO - 60, ANCHO, 60)
@@ -195,7 +215,6 @@ class MotorGrafico:
             else:
                 self.pantalla.fill(VERDE_OSCURO)
             
-            # Dibujar enemigo animado
             if self.enemigo and self.enemigo.esta_vivo():
                 if self.usar_sprites:
                     indice_e = self.frame_index % len(self.anim_enemigo_idle)
@@ -203,19 +222,12 @@ class MotorGrafico:
                 else:
                     pygame.draw.rect(self.pantalla, ROJO_ENEMIGO, self.enemigo_rect)
 
-            # Dibujar jugador animado
             if self.usar_sprites:
-                # Seleccionar la lista de frames según el estado
                 lista_activa = self.anim_heroe_walk if self.accion_heroe == "WALK" else self.anim_heroe_idle
-                
-                # Obtener el cuadro actual
                 indice_h = self.frame_index % len(lista_activa)
                 imagen_actual = lista_activa[indice_h]
-                
-                # Voltear la imagen si camina hacia la izquierda
                 if self.mirando_izquierda:
                     imagen_actual = pygame.transform.flip(imagen_actual, True, False)
-                    
                 self.pantalla.blit(imagen_actual, (self.jugador_x, self.jugador_y))
             else:
                 jugador_rect = pygame.Rect(self.jugador_x, self.jugador_y, TAMANO_TILE, TAMANO_TILE)
@@ -228,15 +240,40 @@ class MotorGrafico:
             
             titulo = self.fuente_grande.render(f"VS {self.enemigo.nombre}", True, ROJO_ENEMIGO)
             hp_enemigo = self.fuente.render(f"HP Enemigo: {self.enemigo.puntos_vida}", True, BLANCO)
-            self.pantalla.blit(titulo, (ANCHO // 2 - titulo.get_width() // 2, 50))
-            self.pantalla.blit(hp_enemigo, (ANCHO // 2 - hp_enemigo.get_width() // 2, 100))
+            self.pantalla.blit(titulo, (ANCHO // 2 - titulo.get_width() // 2, 30))
+            self.pantalla.blit(hp_enemigo, (ANCHO // 2 - hp_enemigo.get_width() // 2, 80))
             
-            # Enemigo animado grande en combate
+            # NUEVO: Lógica de Batalla JRPG Vista Lateral
             if self.usar_sprites:
-                indice_e = self.frame_index % len(self.anim_enemigo_idle)
-                enemigo_grande = pygame.transform.scale(self.anim_enemigo_idle[indice_e], (192, 192))
-                self.pantalla.blit(enemigo_grande, (ANCHO // 2 - 96, 150))
+                tiempo_transcurrido = pygame.time.get_ticks() - self.tiempo_efecto
+                
+                # 1. Determinar Sprite del Héroe
+                if self.efecto_actual == "HEROE_ATACA" and tiempo_transcurrido < 600:
+                    # Animación de ataque (topeamos el index para que no se reinicie a la mitad)
+                    idx = min(self.frame_index, len(self.anim_heroe_attack) - 1)
+                    sprite_h = self.anim_heroe_attack[idx]
+                else:
+                    idx = self.frame_index % len(self.anim_heroe_idle)
+                    sprite_h = self.anim_heroe_idle[idx]
+                    
+                # 2. Determinar Sprite del Enemigo
+                if self.efecto_actual == "ENEMIGO_ATACA" and tiempo_transcurrido < 600:
+                    idx = min(self.frame_index, len(self.anim_enemigo_attack) - 1)
+                    sprite_e = self.anim_enemigo_attack[idx]
+                else:
+                    idx = self.frame_index % len(self.anim_enemigo_idle)
+                    sprite_e = self.anim_enemigo_idle[idx]
+
+                # Dibujar al Héroe a la izquierda (escalado grande)
+                hero_grande = pygame.transform.scale(sprite_h, (192, 192))
+                self.pantalla.blit(hero_grande, (150, 120))
+
+                # Dibujar al Enemigo a la derecha (volteado para que mire al héroe)
+                enemigo_grande = pygame.transform.scale(sprite_e, (192, 192))
+                enemigo_grande = pygame.transform.flip(enemigo_grande, True, False)
+                self.pantalla.blit(enemigo_grande, (450, 120))
             
+            # Panel inferior de mensajes
             caja_msg_rect = pygame.Rect(100, 350, 600, 150)
             pygame.draw.rect(self.pantalla, GRIS_PANEL, caja_msg_rect)
             pygame.draw.rect(self.pantalla, AMARILLO, caja_msg_rect, 3)
@@ -259,14 +296,13 @@ class MotorGrafico:
         pygame.display.flip()
 
     def actualizar_animaciones(self):
-        """Mide el tiempo para cambiar de frame dinámicamente."""
         tiempo_actual = pygame.time.get_ticks()
         if tiempo_actual - self.tiempo_animacion > self.VELOCIDAD_ANIMACION:
             self.tiempo_animacion = tiempo_actual
             self.frame_index += 1
 
     def actualizar(self):
-        self.actualizar_animaciones() # Llamamos al reloj de animaciones en cada vuelta
+        self.actualizar_animaciones() 
         self.reloj.tick(FPS)
 
     def salir(self):
