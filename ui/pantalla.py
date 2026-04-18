@@ -9,7 +9,7 @@ from core.combate import SistemaCombate
 ANCHO = 800
 ALTO = 600
 FPS = 60
-TAMANO_TILE = 32
+TAMANO_TILE = 64
 VELOCIDAD = 5
 
 # Paleta de colores (Fallback)
@@ -48,23 +48,45 @@ class MotorGrafico:
         self.cargar_sprites()
 
     def cargar_sprites(self):
-        """Intenta cargar las imágenes. Si no existen, usa el modo de dibujo básico."""
+        """Intenta cargar las imágenes y recorta el primer frame de las hojas de sprites."""
         self.usar_sprites = False
         try:
-            # Convertimos las imágenes para optimizar el rendimiento en Pygame
-            self.img_heroe = pygame.image.load(os.path.join("assets", "heroe.png")).convert_alpha()
-            self.img_heroe = pygame.transform.scale(self.img_heroe, (TAMANO_TILE, TAMANO_TILE))
+            escala_mapa = (64, 64) 
+            
+            # 1. Cargar el Héroe (Hoja de Sprites completa)
+            ruta_heroe = os.path.join("assets", "Heroe", "Soldier", "Soldier-Idle.png")
+            hoja_heroe = pygame.image.load(ruta_heroe).convert_alpha()
+            
+            # Detectamos el tamaño de un solo cuadro (asumiendo que es cuadrado, usamos su altura)
+            tamano_cuadro_h = hoja_heroe.get_height()
+            
+            # Recortamos el primer frame: (X inicial, Y inicial, Ancho, Alto)
+            rect_primer_frame_h = pygame.Rect(0, 0, tamano_cuadro_h, tamano_cuadro_h)
+            frame_heroe = hoja_heroe.subsurface(rect_primer_frame_h)
+            
+            # Ahora sí escalamos solo ese recorte
+            self.img_heroe = pygame.transform.scale(frame_heroe, escala_mapa)
 
-            self.img_enemigo = pygame.image.load(os.path.join("assets", "enemigo.png")).convert_alpha()
-            self.img_enemigo = pygame.transform.scale(self.img_enemigo, (TAMANO_TILE, TAMANO_TILE))
+            # 2. Cargar el Enemigo (Hoja de Sprites completa)
+            ruta_enemigo = os.path.join("assets", "Enemigo", "Orc", "Orc-Idle.png")
+            hoja_enemigo = pygame.image.load(ruta_enemigo).convert_alpha()
+            
+            tamano_cuadro_e = hoja_enemigo.get_height()
+            rect_primer_frame_e = pygame.Rect(0, 0, tamano_cuadro_e, tamano_cuadro_e)
+            frame_enemigo = hoja_enemigo.subsurface(rect_primer_frame_e)
+            
+            self.img_enemigo = pygame.transform.scale(frame_enemigo, escala_mapa)
 
-            self.img_suelo = pygame.image.load(os.path.join("assets", "suelo.png")).convert()
+            # 3. Cargar el Suelo (Este normalmente sí es un solo bloque, no requiere recorte)
+            ruta_suelo = os.path.join("assets", "Suelo", "Grass_Middle.png")
+            self.img_suelo = pygame.image.load(ruta_suelo).convert()
             self.img_suelo = pygame.transform.scale(self.img_suelo, (TAMANO_TILE, TAMANO_TILE))
             
             self.usar_sprites = True
-            print("✅ Sprites cargados correctamente.")
-        except FileNotFoundError:
-            print("⚠️ Faltan imágenes en 'assets/'. Usando gráficos por defecto (cuadrados).")
+            print("✅ Sprites recortados y cargados correctamente.")
+        except Exception as e:
+            print(f"⚠️ Error cargando imágenes: {e}")
+            print("Usando gráficos por defecto (cuadrados).")
 
     def manejar_eventos(self):
         for evento in pygame.event.get():
