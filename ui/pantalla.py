@@ -1,7 +1,8 @@
 # ui/pantalla.py
 import pygame
 from models.personaje import Personaje
-from models.enemigo import Enemigo # NUEVO: Importamos al enemigo lógico
+from models.enemigo import Enemigo
+from core.combate import SistemaCombate # IMPORTANTE: Traemos el cerebro matemático del daño
 
 # Constantes
 ANCHO = 800
@@ -10,16 +11,16 @@ FPS = 60
 TAMANO_TILE = 32
 VELOCIDAD = 5
 
-# Paleta
+# Paleta de colores
 NEGRO = (0, 0, 0)
 BLANCO = (255, 255, 255)
 VERDE_OSCURO = (34, 139, 34) 
 AZUL_HEROE = (30, 144, 255)
-ROJO_ENEMIGO = (220, 20, 60) # NUEVO: Color del enemigo
+ROJO_ENEMIGO = (220, 20, 60) 
 GRIS_PANEL = (50, 50, 50)
+AMARILLO = (255, 215, 0) # Para destacar los menús de combate
 
 class MotorGrafico:
-    # NUEVO: Recibimos también un enemigo_prueba
     def __init__(self, heroe: Personaje, enemigo_prueba: Enemigo = None):
         pygame.init()
         self.pantalla = pygame.display.set_mode((ANCHO, ALTO))
@@ -32,14 +33,16 @@ class MotorGrafico:
         self.fuente = pygame.font.SysFont("Arial", 20, bold=True)
         self.fuente_grande = pygame.font.SysFont("Arial", 40, bold=True)
         
-        # Estado del juego
-        self.estado = "EXPLORACION" # Puede ser "EXPLORACION" o "COMBATE"
+        # Estados Principales
+        self.estado = "EXPLORACION" 
         
-        # Coordenadas iniciales
+        # NUEVO: Sub-Estados del Combate JRPG
+        self.turno_actual = "JUGADOR" # Puede ser JUGADOR, ENEMIGO, VICTORIA, DERROTA
+        self.mensaje_combate = "¡Un enemigo bloquea el paso!"
+        
         self.jugador_x = (ANCHO // 2) - (TAMANO_TILE // 2)
         self.jugador_y = ((ALTO - 60) // 2) - (TAMANO_TILE // 2)
         
-        # Posicionamos al enemigo a la derecha del mapa si existe
         if self.enemigo:
             self.enemigo_rect = pygame.Rect(600, 300, TAMANO_TILE, TAMANO_TILE)
 
@@ -48,16 +51,48 @@ class MotorGrafico:
             if evento.type == pygame.QUIT:
                 self.corriendo = False
                 
-            # NUEVO: Controles en combate (Ataque rápido de prueba)
+            # Escuchar teclado solo en modo combate
             if self.estado == "COMBATE" and evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_RETURN: # Presionar ENTER para simular victoria
-                    self.enemigo.puntos_vida = 0
-                    self.heroe.ganar_experiencia(150) # Dar EXP al jugador
-                    self.estado = "EXPLORACION" # Volver al mapa
+                self.manejar_teclas_combate(evento)
 
+        # Mover jugador solo en exploración
         if self.estado == "EXPLORACION":
             self.mover_jugador()
             self.verificar_colisiones()
+
+    def manejar_teclas_combate(self, evento):
+        """Controlador de la Máquina de Estados de Turnos (R5.1 y R5.2)"""
+        
+        if self.turno_actual == "JUGADOR":
+            if evento.key == pygame.K_a: # Presionar 'A' para Atacar
+                dano = SistemaCombate.calcular_dano(self.heroe.ataque, self.enemigo.defensa)
+                self.enemigo.recibir_dano(dano)
+                self.mensaje_combate = f"¡{self.heroe.nombre} ataca! Causa {dano} puntos de daño."
+                
+                if not self.enemigo.esta_vivo():
+                    self.turno_actual = "VICTORIA"
+                else:
+                    self.turno_actual = "ENEMIGO"
+
+        elif self.turno_actual == "ENEMIGO":
+            if evento.key == pygame.K_SPACE: # Presionar 'ESPACIO' para recibir el golpe enemigo
+                dano = SistemaCombate.calcular_dano(self.enemigo.ataque, self.heroe.defensa)
+                self.heroe.recibir_dano(dano)
+                self.mensaje_combate = f"¡{self.enemigo.nombre} contraataca y causa {dano} de daño!"
+                
+                if not self.heroe.esta_vivo():
+                    self.turno_actual = "DERROTA"
+                else:
+                    self.turno_actual = "JUGADOR"
+
+        elif self.turno_actual == "VICTORIA":
+            if evento.key == pygame.K_RETURN: # ENTER para salir del combate
+                self.heroe.ganar_experiencia(100) # Recompensa por ganar
+                self.estado = "EXPLORACION"
+                
+        elif self.turno_actual == "DERROTA":
+            if evento.key == pygame.K_RETURN: # ENTER para cerrar el juego tras morir
+                self.corriendo = False
 
     def mover_jugador(self):
         teclas = pygame.key.get_pressed()
@@ -74,14 +109,13 @@ class MotorGrafico:
         self.jugador_y = max(0, min(self.jugador_y, ALTO - 60 - TAMANO_TILE))
 
     def verificar_colisiones(self):
-        """Detecta si el rectángulo del jugador toca el del enemigo."""
         if self.enemigo and self.enemigo.esta_vivo():
             jugador_rect = pygame.Rect(self.jugador_x, self.jugador_y, TAMANO_TILE, TAMANO_TILE)
             if jugador_rect.colliderect(self.enemigo_rect):
-                print(f"¡Emboscada! Iniciando combate contra {self.enemigo.nombre}.")
-                self.estado = "COMBATE" # Cambiamos de pantalla
-                # Empujamos al jugador un poco hacia atrás para que al volver no siga chocando
-                self.jugador_x -= 40 
+                self.estado = "COMBATE" 
+                self.turno_actual = "JUGADOR" # Al chocar, el jugador siempre tiene el primer turno
+                self.mensaje_combate = f"¡Emboscada! {self.enemigo.nombre} te ataca."
+                self.jugador_x -= 40 # Separación para no chocar infinitamente
 
     def dibujar_hud(self):
         panel_rect = pygame.Rect(0, ALTO - 60, ANCHO, 60)
@@ -102,26 +136,44 @@ class MotorGrafico:
         if self.estado == "EXPLORACION":
             self.pantalla.fill(VERDE_OSCURO)
             
-            # Dibujar enemigo (solo si sigue vivo)
             if self.enemigo and self.enemigo.esta_vivo():
                 pygame.draw.rect(self.pantalla, ROJO_ENEMIGO, self.enemigo_rect)
 
-            # Dibujar jugador
             jugador_rect = pygame.Rect(self.jugador_x, self.jugador_y, TAMANO_TILE, TAMANO_TILE)
             pygame.draw.rect(self.pantalla, AZUL_HEROE, jugador_rect)
 
             self.dibujar_hud()
 
         elif self.estado == "COMBATE":
-            # Pantalla de batalla JRPG (Fondo negro)
             self.pantalla.fill(NEGRO)
-            titulo = self.fuente_grande.render(f"¡{self.enemigo.nombre} ataca!", True, ROJO_ENEMIGO)
-            instruccion = self.fuente.render("Presiona ENTER para atacar y ganar (Prueba temporal)", True, BLANCO)
             
-            self.pantalla.blit(titulo, (ANCHO // 2 - titulo.get_width() // 2, ALTO // 3))
-            self.pantalla.blit(instruccion, (ANCHO // 2 - instruccion.get_width() // 2, ALTO // 2))
+            # Dibujar Título del Combate y HP del Enemigo
+            titulo = self.fuente_grande.render(f"VS {self.enemigo.nombre}", True, ROJO_ENEMIGO)
+            hp_enemigo = self.fuente.render(f"HP Enemigo: {self.enemigo.puntos_vida}", True, BLANCO)
+            self.pantalla.blit(titulo, (ANCHO // 2 - titulo.get_width() // 2, 50))
+            self.pantalla.blit(hp_enemigo, (ANCHO // 2 - hp_enemigo.get_width() // 2, 100))
             
-            self.dibujar_hud() # Mantenemos la barra de vida abajo
+            # Dibujar Caja de Mensajes estilo JRPG
+            caja_msg_rect = pygame.Rect(100, 200, 600, 150)
+            pygame.draw.rect(self.pantalla, GRIS_PANEL, caja_msg_rect)
+            pygame.draw.rect(self.pantalla, AMARILLO, caja_msg_rect, 3)
+            
+            texto_msg = self.fuente.render(self.mensaje_combate, True, BLANCO)
+            self.pantalla.blit(texto_msg, (120, 220))
+            
+            # Dibujar Instrucciones dinámicas según el turno
+            if self.turno_actual == "JUGADOR":
+                instruccion = self.fuente.render("▶ Presiona 'A' para Atacar", True, AMARILLO)
+            elif self.turno_actual == "ENEMIGO":
+                instruccion = self.fuente.render("▶ Presiona 'ESPACIO' para continuar", True, AMARILLO)
+            elif self.turno_actual == "VICTORIA":
+                instruccion = self.fuente.render("▶ ¡Has ganado! Presiona 'ENTER' para salir", True, (100, 255, 100))
+            elif self.turno_actual == "DERROTA":
+                instruccion = self.fuente.render("▶ Has muerto. Presiona 'ENTER' para salir", True, ROJO_ENEMIGO)
+                
+            self.pantalla.blit(instruccion, (120, 300))
+            
+            self.dibujar_hud()
 
         pygame.display.flip()
 
