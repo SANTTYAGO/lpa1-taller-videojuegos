@@ -76,6 +76,10 @@ def main():
     print("Iniciando motor gráfico...")
     juego = MotorGrafico()
     
+    heroe_principal = Personaje(nombre="Santi", puntos_vida=100, ataque=20, defensa=15)
+
+    juego = MotorGrafico(heroe=heroe_principal)
+
     # Este es el "Game Loop" universal de todo videojuego
     while juego.corriendo:
         juego.manejar_eventos() # Leer teclado/mouse
