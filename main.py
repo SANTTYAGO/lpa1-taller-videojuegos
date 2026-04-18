@@ -1,5 +1,6 @@
 # main.py
 from models.personaje import Personaje
+from models.enemigo import Enemigo
 from core.escenario import Escenario
 from core.combate import SistemaCombate
 from ui.pantalla import MotorGrafico
@@ -74,11 +75,12 @@ from ui.pantalla import MotorGrafico
 
 def main():
     print("Iniciando motor gráfico...")
-    juego = MotorGrafico()
     
     heroe_principal = Personaje(nombre="Santi", puntos_vida=100, ataque=20, defensa=15)
 
-    juego = MotorGrafico(heroe=heroe_principal)
+    orco = Enemigo(nombre="Orco Furioso", puntos_vida=50, ataque=12, defensa=5, tipo="terrestre")
+
+    juego = MotorGrafico(heroe=heroe_principal, enemigo_prueba=orco)
 
     # Este es el "Game Loop" universal de todo videojuego
     while juego.corriendo:
