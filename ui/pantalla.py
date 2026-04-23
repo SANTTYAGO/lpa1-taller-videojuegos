@@ -49,7 +49,6 @@ class EstadoMenuPrincipal(EstadoJuego):
     """Pantalla inicial del juego con estética armoniosa."""
     def manejar_evento(self, evento):
         if evento.type == pygame.KEYDOWN and evento.key == pygame.K_RETURN:
-            # Al iniciar, cargamos la música de exploración
             if self.motor.usar_sonidos:
                 pygame.mixer.music.load(os.path.join("assets", "Sonidos", "game soundtrack.mp3"))
                 pygame.mixer.music.play(-1)
@@ -58,12 +57,10 @@ class EstadoMenuPrincipal(EstadoJuego):
     def dibujar(self):
         self.motor.pantalla.fill(COLOR_NEGRO_FONDO)
         
-        # Título principal
         texto_titulo = self.motor.fuente_gigante.render("La Leyenda de los 17 Girasoles", True, COLOR_GIRASOL_ACENTO)
         posicion_x_titulo = ANCHO_VENTANA // 2 - texto_titulo.get_width() // 2
         self.motor.pantalla.blit(texto_titulo, (posicion_x_titulo, ALTO_VENTANA // 3))
         
-        # Efecto de parpadeo suave para la instrucción
         tiempo_milisegundos = pygame.time.get_ticks()
         factor_parpadeo = abs(tiempo_milisegundos % 2000 - 1000) / 1000.0 
         brillo_texto = int(255 * factor_parpadeo)
@@ -134,10 +131,8 @@ class EstadoExploracion(EstadoJuego):
 
         self.motor.accion_actual_heroe = "WALK" if esta_moviendose else "IDLE"
 
-        # Límite vertical para no salirse de la zona de juego
         self.motor.posicion_jugador_y = max(0, min(self.motor.posicion_jugador_y, ALTO_VENTANA - 60 - TAMANO_CELDA))
         
-        # Lógica de cambio de habitación (Scroll Lateral)
         if self.motor.posicion_jugador_x > ANCHO_VENTANA - TAMANO_CELDA:
             if self.motor.indice_zona_actual < len(self.motor.mundo.zonas) - 1:
                 self.motor.indice_zona_actual += 1
@@ -157,20 +152,18 @@ class EstadoExploracion(EstadoJuego):
     def _verificar_colisiones_entidades(self):
         rectangulo_heroe = pygame.Rect(self.motor.posicion_jugador_x, self.motor.posicion_jugador_y, TAMANO_CELDA, TAMANO_CELDA)
         
-        # Colisión con Enemigo
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             if rectangulo_heroe.colliderect(self.motor.rectangulo_enemigo):
                 self.motor.estado_actual = self.motor.estado_combate 
                 self.motor.turno_actual = "JUGADOR"
                 self.motor.mensaje_combate = f"¡Emboscada! {self.motor.enemigo_en_zona.nombre} te ataca."
-                self.motor.posicion_jugador_x -= 40 # Separación técnica
+                self.motor.posicion_jugador_x -= 40 
                 self.motor.efecto_combate_activo = None 
                 
                 if self.motor.usar_sonidos:
                     pygame.mixer.music.load(os.path.join("assets", "Sonidos", "fight soundtrack.ogg"))
                     pygame.mixer.music.play(-1)
                     
-        # Colisión con Objetos (Tesoros o Trampas)
         if self.motor.objeto_en_zona:
             if rectangulo_heroe.colliderect(self.motor.rectangulo_objeto):
                 if hasattr(self.motor.objeto_en_zona, 'dano_explosion'):
@@ -184,12 +177,10 @@ class EstadoExploracion(EstadoJuego):
                     if self.motor.usar_sonidos: 
                         self.motor.sonido_moneda.play()
                         
-                # Borramos el objeto del mundo
                 self.motor.mundo.zonas[self.motor.indice_zona_actual].objeto = None
                 self.motor.objeto_en_zona = None
 
     def dibujar(self):
-        # Dibujar Suelo (Tiling)
         if self.motor.usar_sprites:
             for x in range(0, ANCHO_VENTANA, TAMANO_CELDA):
                 for y in range(0, ALTO_VENTANA - 60, TAMANO_CELDA):
@@ -197,13 +188,11 @@ class EstadoExploracion(EstadoJuego):
         else: 
             self.motor.pantalla.fill(COLOR_VERDE_PASTO)
             
-        # Dibujar Mercader
         if self.motor.es_tienda:
             pygame.draw.rect(self.motor.pantalla, COLOR_MORADO_MERCADER, self.motor.rectangulo_mercader)
             texto_tienda = self.motor.fuente.render("Refugio del Mercader ('T')", True, COLOR_BLANCO)
             self.motor.pantalla.blit(texto_tienda, (ANCHO_VENTANA//2 - texto_tienda.get_width()//2, 160))
             
-        # Dibujar Objeto
         if self.motor.objeto_en_zona:
             if self.motor.imagen_objeto: 
                 self.motor.pantalla.blit(self.motor.imagen_objeto, self.motor.rectangulo_objeto.topleft)
@@ -211,7 +200,6 @@ class EstadoExploracion(EstadoJuego):
                 color_obj = (139, 0, 0) if hasattr(self.motor.objeto_en_zona, 'dano_explosion') else COLOR_NARANJA_TESORO
                 pygame.draw.rect(self.motor.pantalla, color_obj, self.motor.rectangulo_objeto)
                 
-        # Dibujar Enemigo
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             if self.motor.usar_sprites:
                 indice_frame = self.motor.indice_animacion % len(self.motor.anim_enemigo_idle)
@@ -219,7 +207,6 @@ class EstadoExploracion(EstadoJuego):
             else: 
                 pygame.draw.rect(self.motor.pantalla, COLOR_ROJO_ENEMIGO, self.motor.rectangulo_enemigo)
                 
-        # Dibujar Héroe Animado
         if self.motor.usar_sprites:
             lista_frames = self.motor.anim_heroe_walk if self.motor.accion_actual_heroe == "WALK" else self.motor.anim_heroe_idle
             indice_frame = self.motor.indice_animacion % len(lista_frames)
@@ -304,7 +291,6 @@ class EstadoCombate(EstadoJuego):
             tiempo_actual = pygame.time.get_ticks()
             duracion = tiempo_actual - self.motor.tiempo_inicio_efecto
             
-            # Animación Héroe
             if self.motor.efecto_combate_activo == "HEROE_ATACA" and duracion < 600:
                 frame_idx = min(self.motor.indice_animacion, len(self.motor.anim_heroe_attack) - 1)
                 img_heroe = self.motor.anim_heroe_attack[frame_idx]
@@ -312,7 +298,6 @@ class EstadoCombate(EstadoJuego):
                 frame_idx = self.motor.indice_animacion % len(self.motor.anim_heroe_idle)
                 img_heroe = self.motor.anim_heroe_idle[frame_idx]
                 
-            # Animación Enemigo
             if self.motor.efecto_combate_activo == "ENEMIGO_ATACA" and duracion < 600:
                 frame_idx = min(self.motor.indice_animacion, len(self.motor.anim_enemigo_attack) - 1)
                 img_enemigo = self.motor.anim_enemigo_attack[frame_idx]
@@ -324,7 +309,6 @@ class EstadoCombate(EstadoJuego):
             enemigo_g = pygame.transform.scale(img_enemigo, (192, 192))
             self.motor.pantalla.blit(pygame.transform.flip(enemigo_g, True, False), (450, 120))
             
-        # Caja de Mensajes
         rect_mensaje = pygame.Rect(100, 350, 600, 150)
         pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_mensaje)
         pygame.draw.rect(self.motor.pantalla, COLOR_AMARILLO_MENU, rect_mensaje, 3)
@@ -401,7 +385,6 @@ class MotorGrafico:
         self.fuente_grande = pygame.font.SysFont("Arial", 40, bold=True)
         self.fuente_gigante = pygame.font.SysFont("Arial", 55, bold=True)
         
-        # Instancias de Estados
         self.estado_menu = EstadoMenuPrincipal(self)
         self.estado_exploracion = EstadoExploracion(self)
         self.estado_combate = EstadoCombate(self)
@@ -410,7 +393,6 @@ class MotorGrafico:
         
         self.estado_actual = self.estado_menu 
         
-        # Variables de Sistema Compartidas
         self.turno_actual = "JUGADOR"
         self.mensaje_combate = "¡Un enemigo bloquea el paso!"
         self.mensaje_tienda = "¡Bienvenido! ¿Qué vas a llevar?"
@@ -418,7 +400,6 @@ class MotorGrafico:
         
         self.posicion_jugador_x = 50 
         self.posicion_jugador_y = ((ALTO_VENTANA - 60) // 2) - (TAMANO_CELDA // 2)
-        self.frame_index_anim = 0
         self.indice_animacion = 0
         self.tiempo_ultima_animacion = 0
         self.velocidad_animacion_ms = 120 
@@ -461,33 +442,37 @@ class MotorGrafico:
         self.imagen_objeto = None
         try:
             esc = (TAMANO_CELDA, TAMANO_CELDA) 
-            # Héroe
             self.anim_heroe_idle = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Idle.png"), esc)
             self.anim_heroe_walk = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Walk.png"), esc)
             self.anim_heroe_attack = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Attack01.png"), esc)
-            # Enemigo
             self.anim_enemigo_idle = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Idle.png"), esc)
             self.anim_enemigo_attack = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Attack01.png"), esc)
-            # Suelo
             self.imagen_suelo = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Suelo", "Grass_Middle.png")).convert(), esc)
-            # Objeto
             try: self.imagen_objeto = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objeto", "item.png")).convert_alpha(), esc)
             except: pass
             
             self.usar_sprites = True
         except Exception as error: 
-            print(f"Modo gráfico simplificado. Error: {error}")
+            print(f"Modo gráfico simplificado activado. Error: {error}")
 
     def cargar_sonidos(self):
         self.usar_sonidos = False
         try:
             self.sonido_ataque = pygame.mixer.Sound(os.path.join("assets", "Sonidos", "knifeSlice.ogg"))
             self.sonido_moneda = pygame.mixer.Sound(os.path.join("assets", "Sonidos", "handleCoins.ogg"))
+            
+            # --- NUEVO: Cargamos dinámicamente los 10 sonidos de pasos ---
+            self.sonidos_pasos = []
+            for i in range(10): 
+                paso = pygame.mixer.Sound(os.path.join("assets", "Sonidos", f"footstep0{i}.ogg"))
+                paso.set_volume(0.2) 
+                self.sonidos_pasos.append(paso)
+            
             self.sonido_ataque.set_volume(0.4) 
             self.sonido_moneda.set_volume(0.5)
             self.usar_sonidos = True
-        except: 
-            print("Jugando en silencio (Sonidos no encontrados).")
+        except Exception as error: 
+            print(f"Jugando en silencio. Error cargando sonidos: {error}")
 
     def manejar_eventos(self):
         for evento in pygame.event.get():
@@ -519,6 +504,11 @@ class MotorGrafico:
         if tiempo_actual - self.tiempo_ultima_animacion > self.velocidad_animacion_ms:
             self.tiempo_ultima_animacion = tiempo_actual
             self.indice_animacion += 1
+            
+            # --- NUEVO: Reproducimos un paso al azar al caminar ---
+            if self.accion_actual_heroe == "WALK" and self.usar_sonidos:
+                if self.indice_animacion % 2 == 0: 
+                    random.choice(self.sonidos_pasos).play()
             
         self.reloj.tick(FOTOGRAMAS_POR_SEGUNDO)
 
