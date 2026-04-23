@@ -18,7 +18,13 @@ class MotorGrafico:
         pygame.init()
         pygame.mixer.init()
         
-        self.pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA))
+        # --- NUEVO: Configuraciones Globales ---
+        self.pantalla_completa = False
+        self.volumen_musica = 0.5
+        self.volumen_sfx = 0.5
+        
+        # Iniciamos con SCALED para permitir el paso a pantalla completa fluidamente
+        self.pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA), pygame.SCALED)
         pygame.display.set_caption("La Leyenda de los 17 Girasoles")
         self.reloj = pygame.time.Clock()
         self.corriendo = True
@@ -62,6 +68,26 @@ class MotorGrafico:
         self.cargar_recursos_graficos()
         self.cargar_sonidos()
         self.cargar_zona() 
+
+    # --- NUEVOS MÉTODOS DE CONFIGURACIÓN ---
+    def alternar_pantalla_completa(self):
+        self.pantalla_completa = not self.pantalla_completa
+        if self.pantalla_completa:
+            self.pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA), pygame.FULLSCREEN | pygame.SCALED)
+        else:
+            self.pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA), pygame.SCALED)
+
+    def ajustar_volumen_musica(self, incremento):
+        self.volumen_musica = max(0.0, min(1.0, self.volumen_musica + incremento))
+        pygame.mixer.music.set_volume(self.volumen_musica)
+
+    def ajustar_volumen_sfx(self, incremento):
+        self.volumen_sfx = max(0.0, min(1.0, self.volumen_sfx + incremento))
+        if self.usar_sonidos:
+            self.sonido_ataque.set_volume(self.volumen_sfx)
+            self.sonido_moneda.set_volume(self.volumen_sfx)
+            for paso in self.sonidos_pasos:
+                paso.set_volume(self.volumen_sfx * 0.4) # Los pasos siempre suenan un poco más bajo
 
     def cargar_zona(self):
         zona_actual = self.mundo.zonas[self.indice_zona_actual]
@@ -115,11 +141,12 @@ class MotorGrafico:
             self.sonidos_pasos = []
             for i in range(10): 
                 paso = pygame.mixer.Sound(os.path.join("assets", "Sonidos", f"footstep0{i}.ogg"))
-                paso.set_volume(0.2) 
                 self.sonidos_pasos.append(paso)
             
-            self.sonido_ataque.set_volume(0.4) 
-            self.sonido_moneda.set_volume(0.5)
+            # Aplicamos los volúmenes iniciales
+            self.ajustar_volumen_sfx(0)
+            pygame.mixer.music.set_volume(self.volumen_musica)
+            
             self.usar_sonidos = True
         except Exception as error: 
             print(f"Jugando en silencio. Error cargando sonidos: {error}")

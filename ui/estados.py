@@ -15,6 +15,7 @@ class EstadoJuego:
     def actualizar(self): pass
     def dibujar(self): pass
 
+
 class EstadoMenuPrincipal(EstadoJuego):
     """Pantalla inicial del juego con estética armoniosa."""
     def manejar_evento(self, evento):
@@ -39,6 +40,7 @@ class EstadoMenuPrincipal(EstadoJuego):
         texto_instruccion = self.motor.fuente.render("Presiona ENTER para comenzar la aventura", True, color_instruccion)
         posicion_x_inst = ANCHO_VENTANA // 2 - texto_instruccion.get_width() // 2
         self.motor.pantalla.blit(texto_instruccion, (posicion_x_inst, ALTO_VENTANA // 2 + 50))
+
 
 class EstadoFinJuego(EstadoJuego):
     """Pantalla de Game Over o Victoria final."""
@@ -66,65 +68,106 @@ class EstadoFinJuego(EstadoJuego):
         self.motor.pantalla.blit(texto_secundario, (ANCHO_VENTANA // 2 - texto_secundario.get_width() // 2, ALTO_VENTANA // 2))
         self.motor.pantalla.blit(texto_salir, (ANCHO_VENTANA // 2 - texto_salir.get_width() // 2, ALTO_VENTANA - 100))
 
+
 class EstadoPausa(EstadoJuego):
-    """Menú de pausa e inventario detallado con fondo semi-transparente."""
+    """Menú de pausa interactivo con Configuraciones e Inventario."""
+    def __init__(self, motor_grafico):
+        super().__init__(motor_grafico)
+        self.opcion_seleccionada = 0
+        self.opciones = ["Música", "Efectos (SFX)", "Pantalla Completa", "Cerrar Menú"]
+
     def manejar_evento(self, evento):
         if evento.type == pygame.KEYDOWN:
             if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_i:
                 self.motor.estado_actual = self.motor.estado_exploracion
+            # Navegación del Menú
+            elif evento.key == pygame.K_UP:
+                self.opcion_seleccionada = (self.opcion_seleccionada - 1) % len(self.opciones)
+            elif evento.key == pygame.K_DOWN:
+                self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.opciones)
+            # Ajustar Valores
+            elif evento.key == pygame.K_LEFT:
+                if self.opcion_seleccionada == 0: self.motor.ajustar_volumen_musica(-0.1)
+                elif self.opcion_seleccionada == 1: self.motor.ajustar_volumen_sfx(-0.1)
+            elif evento.key == pygame.K_RIGHT:
+                if self.opcion_seleccionada == 0: self.motor.ajustar_volumen_musica(0.1)
+                elif self.opcion_seleccionada == 1: self.motor.ajustar_volumen_sfx(0.1)
+            # Seleccionar Opciones
+            elif evento.key == pygame.K_RETURN:
+                if self.opcion_seleccionada == 2:
+                    self.motor.alternar_pantalla_completa()
+                elif self.opcion_seleccionada == 3:
+                    self.motor.estado_actual = self.motor.estado_exploracion
 
     def dibujar(self):
+        # Dibujar fondo pausado
         self.motor.estado_exploracion.dibujar()
-        
         superficie_oscura = pygame.Surface((ANCHO_VENTANA, ALTO_VENTANA))
         superficie_oscura.set_alpha(220) 
         superficie_oscura.fill(COLOR_NEGRO_FONDO)
         self.motor.pantalla.blit(superficie_oscura, (0, 0))
 
         titulo = self.motor.fuente_gigante.render("Menú de Campamento", True, COLOR_GIRASOL_ACENTO)
-        self.motor.pantalla.blit(titulo, (ANCHO_VENTANA // 2 - titulo.get_width() // 2, 50))
+        self.motor.pantalla.blit(titulo, (ANCHO_VENTANA // 2 - titulo.get_width() // 2, 30))
 
-        rect_stats = pygame.Rect(100, 150, 250, 300)
+        # --- PANEL IZQUIERDO: Estadísticas ---
+        rect_stats = pygame.Rect(100, 100, 250, 280)
         pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_stats)
         pygame.draw.rect(self.motor.pantalla, COLOR_BLANCO, rect_stats, 2)
 
-        tit_stats = self.motor.fuente_grande.render("Estadísticas", True, COLOR_BLANCO)
-        self.motor.pantalla.blit(tit_stats, (120, 160))
+        self.motor.pantalla.blit(self.motor.fuente_grande.render("Estadísticas", True, COLOR_BLANCO), (120, 110))
 
         textos_stats = [
             f"Héroe: {self.motor.heroe.nombre}",
             f"Nivel: {self.motor.heroe.nivel}",
             f"EXP: {self.motor.heroe.experiencia}",
             f"HP: {self.motor.heroe.puntos_vida} / {self.motor.heroe.puntos_vida_max}",
-            f"Ataque: {self.motor.heroe.ataque}",
-            f"Defensa: {self.motor.heroe.defensa}",
+            f"ATK: {self.motor.heroe.ataque} | DEF: {self.motor.heroe.defensa}",
             f"Zonas: {self.motor.heroe.zonas_exploradas}/20"
         ]
-
         for indice, texto in enumerate(textos_stats):
-            render_txt = self.motor.fuente.render(texto, True, COLOR_AMARILLO_MENU)
-            self.motor.pantalla.blit(render_txt, (120, 220 + (indice * 30)))
+            self.motor.pantalla.blit(self.motor.fuente.render(texto, True, COLOR_AMARILLO_MENU), (120, 160 + (indice * 30)))
 
-        rect_inv = pygame.Rect(400, 150, 300, 300)
+        # --- PANEL DERECHO: Mochila ---
+        rect_inv = pygame.Rect(400, 100, 300, 280)
         pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_inv)
         pygame.draw.rect(self.motor.pantalla, COLOR_GIRASOL_ACENTO, rect_inv, 2)
 
-        tit_inv = self.motor.fuente_grande.render("Mochila", True, COLOR_BLANCO)
-        self.motor.pantalla.blit(tit_inv, (420, 160))
-
+        self.motor.pantalla.blit(self.motor.fuente_grande.render("Mochila", True, COLOR_BLANCO), (420, 110))
         girasoles_encontrados = sum(1 for item in self.motor.heroe.inventario if "Girasol" in item.nombre)
 
-        txt_girasoles = self.motor.fuente_grande.render(f"Girasoles: {girasoles_encontrados} / 17", True, COLOR_GIRASOL_ACENTO)
-        self.motor.pantalla.blit(txt_girasoles, (420, 220))
+        self.motor.pantalla.blit(self.motor.fuente_grande.render(f"Girasoles: {girasoles_encontrados} / 17", True, COLOR_GIRASOL_ACENTO), (420, 170))
+        self.motor.pantalla.blit(self.motor.fuente.render(f"Otros objetos: {len(self.motor.heroe.inventario) - girasoles_encontrados}", True, COLOR_BLANCO), (420, 230))
+        self.motor.pantalla.blit(self.motor.fuente.render(f"Oro (Puntos): {self.motor.heroe.puntaje}", True, (100, 255, 100)), (420, 280))
 
-        txt_items = self.motor.fuente.render(f"Otros objetos: {len(self.motor.heroe.inventario) - girasoles_encontrados}", True, COLOR_BLANCO)
-        self.motor.pantalla.blit(txt_items, (420, 280))
+        # --- PANEL INFERIOR: Configuraciones ---
+        rect_config = pygame.Rect(100, 400, 600, 160)
+        pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_config)
+        pygame.draw.rect(self.motor.pantalla, COLOR_BLANCO, rect_config, 2)
 
-        txt_puntos = self.motor.fuente.render(f"Oro (Puntos): {self.motor.heroe.puntaje}", True, (100, 255, 100))
-        self.motor.pantalla.blit(txt_puntos, (420, 330))
+        self.motor.pantalla.blit(self.motor.fuente.render("Configuración (Flechas: Ajustar/Mover | ENTER: Seleccionar)", True, COLOR_AMARILLO_MENU), (120, 410))
 
-        instruccion = self.motor.fuente.render("▶ Presiona 'ESC' o 'I' para continuar", True, COLOR_BLANCO)
-        self.motor.pantalla.blit(instruccion, (ANCHO_VENTANA // 2 - instruccion.get_width() // 2, ALTO_VENTANA - 80))
+        # Renderizar opciones interactivas
+        for i, opcion in enumerate(self.opciones):
+            color = COLOR_GIRASOL_ACENTO if i == self.opcion_seleccionada else COLOR_BLANCO
+            marcador = "▶ " if i == self.opcion_seleccionada else "  "
+
+            if i == 0: 
+                texto = f"{marcador}Música: {int(self.motor.volumen_musica * 100)}%"
+                pos = (120, 460)
+            elif i == 1: 
+                texto = f"{marcador}Efectos SFX: {int(self.motor.volumen_sfx * 100)}%"
+                pos = (120, 500)
+            elif i == 2: 
+                estado_pant = "Completa" if self.motor.pantalla_completa else "Ventana"
+                texto = f"{marcador}Pantalla: {estado_pant}"
+                pos = (400, 460)
+            elif i == 3: 
+                texto = f"{marcador}Cerrar Menú"
+                pos = (400, 500)
+
+            self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color), pos)
+
 
 class EstadoExploracion(EstadoJuego):
     """Lógica de movimiento por el mapa y transiciones de zonas."""
@@ -248,6 +291,7 @@ class EstadoExploracion(EstadoJuego):
         else:
             rect_h = pygame.Rect(self.motor.posicion_jugador_x, self.motor.posicion_jugador_y, TAMANO_CELDA, TAMANO_CELDA)
             pygame.draw.rect(self.motor.pantalla, COLOR_AZUL_HEROE, rect_h)
+
 
 class EstadoCombate(EstadoJuego):
     """Pantalla de batalla por turnos con vista lateral JRPG e indicadores de daño."""
