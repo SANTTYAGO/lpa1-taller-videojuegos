@@ -1,11 +1,14 @@
 # ui/estados.py
 import pygame
 import os
+import math
 from ui.constantes import *
 from ui.elementos import TextoFlotante
-from core.combate import AtaqueBasico, GolpeEspecial, Curacion # <-- IMPORTAMOS LAS HABILIDADES POLIMÓRFICAS
+# CORRECCIÓN: Eliminamos 'SistemaCombate' de esta línea porque ya no existe
+from core.combate import AtaqueBasico, GolpeEspecial, Curacion 
 from models.objeto import Equipamiento
 
+# Desfase visual para que el personaje grande pise justo sobre su hitbox lógico
 OFFSET_X = (ESCALA_PERSONAJE - TAMANO_CELDA) // 2
 OFFSET_Y = ESCALA_PERSONAJE - TAMANO_CELDA
 
@@ -160,6 +163,7 @@ class EstadoPausa(EstadoJuego):
             
             self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color), pos)
 
+
 class EstadoExploracion(EstadoJuego):
     def manejar_evento(self, evento):
         if evento.type == pygame.KEYDOWN:
@@ -171,6 +175,13 @@ class EstadoExploracion(EstadoJuego):
 
     def actualizar(self):
         self._procesar_movimiento_heroe()
+        
+        # Inteligencia Artificial del Enemigo (Rango y Persecución)
+        if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
+            self.motor.enemigo_en_zona.actualizar_ia(self.motor.posicion_jugador_x, self.motor.posicion_jugador_y)
+            self.motor.rectangulo_enemigo.x = self.motor.enemigo_en_zona.x
+            self.motor.rectangulo_enemigo.y = self.motor.enemigo_en_zona.y
+
         self._verificar_colisiones_entidades()
 
     def _procesar_movimiento_heroe(self):
@@ -217,7 +228,11 @@ class EstadoExploracion(EstadoJuego):
                 self.motor.estado_actual = self.motor.estado_combate 
                 self.motor.turno_actual = "JUGADOR"
                 self.motor.mensaje_combate = f"¡Emboscada! {self.motor.enemigo_en_zona.nombre} te ataca."
-                self.motor.posicion_jugador_x -= 40 
+                if self.motor.enemigo_en_zona.x < self.motor.posicion_jugador_x:
+                    self.motor.posicion_jugador_x += 40 
+                else:
+                    self.motor.posicion_jugador_x -= 40
+                    
                 self.motor.efecto_combate_activo = None 
                 if self.motor.usar_sonidos:
                     pygame.mixer.music.load(os.path.join("assets", "Sonidos", "fight soundtrack.ogg"))
@@ -257,10 +272,20 @@ class EstadoExploracion(EstadoJuego):
                 
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             if self.motor.usar_sprites:
-                indice_frame = self.motor.indice_animacion % len(self.motor.anim_enemigo_idle)
+                if self.motor.enemigo_en_zona.estado_ia == "PERSIGUIENDO":
+                    anim_orco = self.motor.anim_enemigo_walk
+                else:
+                    anim_orco = self.motor.anim_enemigo_idle
+                
+                indice_frame = self.motor.indice_animacion % len(anim_orco)
+                imagen_orco = anim_orco[indice_frame]
+                
+                if self.motor.enemigo_en_zona.direccion_patrulla == -1 or (self.motor.enemigo_en_zona.estado_ia == "PERSIGUIENDO" and self.motor.posicion_jugador_x < self.motor.enemigo_en_zona.x):
+                    imagen_orco = pygame.transform.flip(imagen_orco, True, False)
+
                 pos_e_x = self.motor.rectangulo_enemigo.x - OFFSET_X
                 pos_e_y = self.motor.rectangulo_enemigo.y - OFFSET_Y
-                self.motor.pantalla.blit(self.motor.anim_enemigo_idle[indice_frame], (pos_e_x, pos_e_y))
+                self.motor.pantalla.blit(imagen_orco, (pos_e_x, pos_e_y))
             else: pygame.draw.rect(self.motor.pantalla, COLOR_ROJO_ENEMIGO, self.motor.rectangulo_enemigo)
                 
         if self.motor.usar_sprites:
@@ -284,7 +309,6 @@ class EstadoCombate(EstadoJuego):
         if self.motor.turno_actual == "JUGADOR":
             habilidad_seleccionada = None
             
-            # POLIMORFISMO EN ACCIÓN: Instanciamos diferentes objetos según la tecla
             if evento.key == pygame.K_a:
                 habilidad_seleccionada = AtaqueBasico()
                 self.motor.efecto_combate_activo = "HEROE_ATACA"
@@ -293,13 +317,12 @@ class EstadoCombate(EstadoJuego):
                 self.motor.efecto_combate_activo = "HEROE_ATACA"
             elif evento.key == pygame.K_c:
                 habilidad_seleccionada = Curacion()
-                self.motor.efecto_combate_activo = "HEROE_ATACA" # Usamos la misma animación por ahora
+                self.motor.efecto_combate_activo = "HEROE_ATACA" 
                 
             if habilidad_seleccionada:
-                # Validamos si tiene MP suficiente ANTES de gastar el turno
                 if self.motor.heroe.puntos_magia < habilidad_seleccionada.costo_mp:
                     self.motor.mensaje_combate = "¡No tienes suficiente Maná (MP) para hacer eso!"
-                    return # Cortamos aquí para que el jugador elija otra cosa
+                    return 
                 
                 if self.motor.usar_sonidos and evento.key != pygame.K_c: 
                     self.motor.sonido_ataque.play()
@@ -307,11 +330,9 @@ class EstadoCombate(EstadoJuego):
                 self.motor.tiempo_inicio_efecto = pygame.time.get_ticks()
                 self.motor.indice_animacion = 0 
                 
-                # Ejecución Polimórfica (No importa si es Ataque o Curación, todas tienen .ejecutar)
                 danio, msg = habilidad_seleccionada.ejecutar(self.motor.heroe, self.motor.enemigo_en_zona)
                 self.motor.mensaje_combate = msg
                 
-                # Feedback visual en pantalla
                 if danio > 0:
                     texto_danio = TextoFlotante(f"-{danio}", 500, 150, COLOR_BLANCO, self.motor.fuente_gigante)
                     self.motor.textos_flotantes.append(texto_danio)
@@ -330,7 +351,6 @@ class EstadoCombate(EstadoJuego):
                 self.motor.tiempo_inicio_efecto = pygame.time.get_ticks()
                 self.motor.indice_animacion = 0
                 
-                # El enemigo siempre usa Ataque Básico
                 ataque_enemigo = AtaqueBasico()
                 danio, msg = ataque_enemigo.ejecutar(self.motor.enemigo_en_zona, self.motor.heroe)
                 self.motor.mensaje_combate = msg
@@ -394,7 +414,6 @@ class EstadoCombate(EstadoJuego):
         pygame.draw.rect(self.motor.pantalla, COLOR_AMARILLO_MENU, rect_mensaje, 3)
         self.motor.pantalla.blit(self.motor.fuente.render(self.motor.mensaje_combate, True, COLOR_BLANCO), (120, 370))
         
-        # --- NUEVOS CONTROLES DE COMBATE ---
         if self.motor.turno_actual == "JUGADOR": 
             inst = "[A] Básico | [S] Feroz (-15 MP) | [C] Curar (-20 MP)"
             color_inst = COLOR_AMARILLO_MENU

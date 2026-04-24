@@ -88,8 +88,14 @@ class MotorGrafico:
         self.es_tienda = zona_actual.es_tienda
         self.nombre_zona_actual = zona_actual.nombre
         
+        # --- NUEVO: Inicializamos la posición matemática de la IA del enemigo ---
         if self.enemigo_en_zona: 
-            self.rectangulo_enemigo = pygame.Rect(600, 300, TAMANO_CELDA, TAMANO_CELDA)
+            start_x = 600
+            start_y = 300
+            self.enemigo_en_zona.inicializar_posicion(start_x, start_y)
+            # El rectangulo se usará en exploración, pero lo vincularemos a sus coordenadas dinámicas
+            self.rectangulo_enemigo = pygame.Rect(self.enemigo_en_zona.x, self.enemigo_en_zona.y, TAMANO_CELDA, TAMANO_CELDA)
+            
         if self.objeto_en_zona: 
             self.rectangulo_objeto = pygame.Rect(300, 400, TAMANO_CELDA, TAMANO_CELDA)
         if self.es_tienda: 
@@ -119,7 +125,12 @@ class MotorGrafico:
             
             self.anim_enemigo_idle = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Idle.png"), esc_personaje)
             self.anim_enemigo_attack = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Attack01.png"), esc_personaje)
-            
+            # Agregamos animación de caminar para el enemigo (puedes usar la de Idle si no tienes Walk cargada aún, pero asumimos que tienes un Orc-Walk similar)
+            try:
+                self.anim_enemigo_walk = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Walk.png"), esc_personaje)
+            except:
+                self.anim_enemigo_walk = self.anim_enemigo_idle
+
             self.imagen_suelo = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Suelo", "Grass_Middle.png")).convert(), esc_mapa)
             
             try: self.imagen_objeto = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objeto", "item.png")).convert_alpha(), esc_mapa)
@@ -160,7 +171,6 @@ class MotorGrafico:
         pygame.draw.rect(self.pantalla, COLOR_GRIS_PANEL, rect_panel)
         pygame.draw.rect(self.pantalla, COLOR_BLANCO, rect_panel, 2)
         
-        # --- AÑADIMOS PUNTOS DE MAGIA (MP) EN CIAN ---
         t_hp = self.fuente.render(f"HP: {self.heroe.puntos_vida}/{self.heroe.puntos_vida_max}", True, (255, 100, 100))
         t_mp = self.fuente.render(f"MP: {self.heroe.puntos_magia}/{self.heroe.puntos_magia_max}", True, (100, 200, 255))
         t_inv = self.fuente.render(f"ATK: {self.heroe.ataque} | DEF: {self.heroe.defensa} | Oro: {self.heroe.puntaje}", True, COLOR_AMARILLO_MENU)
