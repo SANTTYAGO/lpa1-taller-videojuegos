@@ -4,7 +4,10 @@
 ANCHO_VENTANA = 800
 ALTO_VENTANA = 600
 FOTOGRAMAS_POR_SEGUNDO = 60
-TAMANO_CELDA = 64 
+
+# --- PROPORCIONES VISUALES ---
+TAMANO_CELDA = 64          
+ESCALA_PERSONAJE = 110     # ¡Hacemos que el Héroe y el Orco se vean mucho más grandes!
 VELOCIDAD_MOVIMIENTO = 5
 
 # Paleta de colores para la Interfaz (UI/UX)

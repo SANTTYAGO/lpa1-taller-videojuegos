@@ -6,18 +6,17 @@ from ui.elementos import TextoFlotante
 from core.combate import SistemaCombate
 from models.objeto import Equipamiento
 
-class EstadoJuego:
-    """Clase base abstracta para definir el comportamiento de cada pantalla."""
-    def __init__(self, motor_grafico):
-        self.motor = motor_grafico 
+# Desfase visual para que el personaje grande pise justo sobre su hitbox lógico
+OFFSET_X = (ESCALA_PERSONAJE - TAMANO_CELDA) // 2
+OFFSET_Y = ESCALA_PERSONAJE - TAMANO_CELDA
 
+class EstadoJuego:
+    def __init__(self, motor_grafico): self.motor = motor_grafico 
     def manejar_evento(self, evento): pass
     def actualizar(self): pass
     def dibujar(self): pass
 
-
 class EstadoMenuPrincipal(EstadoJuego):
-    """Pantalla inicial del juego con estética armoniosa."""
     def manejar_evento(self, evento):
         if evento.type == pygame.KEYDOWN and evento.key == pygame.K_RETURN:
             if self.motor.usar_sonidos:
@@ -27,7 +26,6 @@ class EstadoMenuPrincipal(EstadoJuego):
 
     def dibujar(self):
         self.motor.pantalla.fill(COLOR_NEGRO_FONDO)
-        
         texto_titulo = self.motor.fuente_gigante.render("La Leyenda de los 17 Girasoles", True, COLOR_GIRASOL_ACENTO)
         posicion_x_titulo = ANCHO_VENTANA // 2 - texto_titulo.get_width() // 2
         self.motor.pantalla.blit(texto_titulo, (posicion_x_titulo, ALTO_VENTANA // 3))
@@ -38,39 +36,31 @@ class EstadoMenuPrincipal(EstadoJuego):
         color_instruccion = (brillo_texto, brillo_texto, brillo_texto)
         
         texto_instruccion = self.motor.fuente.render("Presiona ENTER para comenzar la aventura", True, color_instruccion)
-        posicion_x_inst = ANCHO_VENTANA // 2 - texto_instruccion.get_width() // 2
-        self.motor.pantalla.blit(texto_instruccion, (posicion_x_inst, ALTO_VENTANA // 2 + 50))
-
+        self.motor.pantalla.blit(texto_instruccion, (ANCHO_VENTANA // 2 - texto_instruccion.get_width() // 2, ALTO_VENTANA // 2 + 50))
 
 class EstadoFinJuego(EstadoJuego):
-    """Pantalla de Game Over o Victoria final."""
     def __init__(self, motor_grafico):
         super().__init__(motor_grafico)
         self.es_victoria = False 
 
     def manejar_evento(self, evento):
-        if evento.type == pygame.KEYDOWN and evento.key == pygame.K_RETURN:
-            self.motor.corriendo = False 
+        if evento.type == pygame.KEYDOWN and evento.key == pygame.K_RETURN: self.motor.corriendo = False 
 
     def dibujar(self):
         self.motor.pantalla.fill(COLOR_NEGRO_FONDO)
-        
         if self.es_victoria:
             texto_principal = self.motor.fuente_gigante.render("¡VICTORIA SUPREMA!", True, COLOR_GIRASOL_ACENTO)
-            texto_secundario = self.motor.fuente.render("Has superado todas las zonas con honor.", True, COLOR_BLANCO)
+            texto_secundario = self.motor.fuente.render("El Rey Demonio ha caído. El mundo está a salvo.", True, COLOR_BLANCO)
         else:
             texto_principal = self.motor.fuente_gigante.render("FIN DEL JUEGO", True, COLOR_ROJO_ENEMIGO)
             texto_secundario = self.motor.fuente.render("Tu viaje ha terminado en la derrota...", True, COLOR_BLANCO)
             
         texto_salir = self.motor.fuente.render("Presiona ENTER para salir", True, COLOR_GRIS_PANEL)
-        
         self.motor.pantalla.blit(texto_principal, (ANCHO_VENTANA // 2 - texto_principal.get_width() // 2, ALTO_VENTANA // 3))
         self.motor.pantalla.blit(texto_secundario, (ANCHO_VENTANA // 2 - texto_secundario.get_width() // 2, ALTO_VENTANA // 2))
         self.motor.pantalla.blit(texto_salir, (ANCHO_VENTANA // 2 - texto_salir.get_width() // 2, ALTO_VENTANA - 100))
 
-
 class EstadoPausa(EstadoJuego):
-    """Menú de pausa interactivo con Configuraciones e Inventario."""
     def __init__(self, motor_grafico):
         super().__init__(motor_grafico)
         self.opcion_seleccionada = 0
@@ -78,29 +68,20 @@ class EstadoPausa(EstadoJuego):
 
     def manejar_evento(self, evento):
         if evento.type == pygame.KEYDOWN:
-            if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_i:
-                self.motor.estado_actual = self.motor.estado_exploracion
-            # Navegación del Menú
-            elif evento.key == pygame.K_UP:
-                self.opcion_seleccionada = (self.opcion_seleccionada - 1) % len(self.opciones)
-            elif evento.key == pygame.K_DOWN:
-                self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.opciones)
-            # Ajustar Valores
+            if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_i: self.motor.estado_actual = self.motor.estado_exploracion
+            elif evento.key == pygame.K_UP: self.opcion_seleccionada = (self.opcion_seleccionada - 1) % len(self.opciones)
+            elif evento.key == pygame.K_DOWN: self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.opciones)
             elif evento.key == pygame.K_LEFT:
                 if self.opcion_seleccionada == 0: self.motor.ajustar_volumen_musica(-0.1)
                 elif self.opcion_seleccionada == 1: self.motor.ajustar_volumen_sfx(-0.1)
             elif evento.key == pygame.K_RIGHT:
                 if self.opcion_seleccionada == 0: self.motor.ajustar_volumen_musica(0.1)
                 elif self.opcion_seleccionada == 1: self.motor.ajustar_volumen_sfx(0.1)
-            # Seleccionar Opciones
             elif evento.key == pygame.K_RETURN:
-                if self.opcion_seleccionada == 2:
-                    self.motor.alternar_pantalla_completa()
-                elif self.opcion_seleccionada == 3:
-                    self.motor.estado_actual = self.motor.estado_exploracion
+                if self.opcion_seleccionada == 2: self.motor.alternar_pantalla_completa()
+                elif self.opcion_seleccionada == 3: self.motor.estado_actual = self.motor.estado_exploracion
 
     def dibujar(self):
-        # Dibujar fondo pausado
         self.motor.estado_exploracion.dibujar()
         superficie_oscura = pygame.Surface((ANCHO_VENTANA, ALTO_VENTANA))
         superficie_oscura.set_alpha(220) 
@@ -110,11 +91,9 @@ class EstadoPausa(EstadoJuego):
         titulo = self.motor.fuente_gigante.render("Menú de Campamento", True, COLOR_GIRASOL_ACENTO)
         self.motor.pantalla.blit(titulo, (ANCHO_VENTANA // 2 - titulo.get_width() // 2, 30))
 
-        # --- PANEL IZQUIERDO: Estadísticas ---
         rect_stats = pygame.Rect(100, 100, 250, 280)
         pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_stats)
         pygame.draw.rect(self.motor.pantalla, COLOR_BLANCO, rect_stats, 2)
-
         self.motor.pantalla.blit(self.motor.fuente_grande.render("Estadísticas", True, COLOR_BLANCO), (120, 110))
 
         textos_stats = [
@@ -128,49 +107,30 @@ class EstadoPausa(EstadoJuego):
         for indice, texto in enumerate(textos_stats):
             self.motor.pantalla.blit(self.motor.fuente.render(texto, True, COLOR_AMARILLO_MENU), (120, 160 + (indice * 30)))
 
-        # --- PANEL DERECHO: Mochila ---
         rect_inv = pygame.Rect(400, 100, 300, 280)
         pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_inv)
         pygame.draw.rect(self.motor.pantalla, COLOR_GIRASOL_ACENTO, rect_inv, 2)
-
         self.motor.pantalla.blit(self.motor.fuente_grande.render("Mochila", True, COLOR_BLANCO), (420, 110))
         girasoles_encontrados = sum(1 for item in self.motor.heroe.inventario if "Girasol" in item.nombre)
-
-        self.motor.pantalla.blit(self.motor.fuente_grande.render(f"Girasoles: {girasoles_encontrados} / 17", True, COLOR_GIRASOL_ACENTO), (420, 170))
+        self.motor.pantalla.blit(self.motor.fuente_grande.render(f"Girasoles: {girasoles_encontrados}", True, COLOR_GIRASOL_ACENTO), (420, 170))
         self.motor.pantalla.blit(self.motor.fuente.render(f"Otros objetos: {len(self.motor.heroe.inventario) - girasoles_encontrados}", True, COLOR_BLANCO), (420, 230))
         self.motor.pantalla.blit(self.motor.fuente.render(f"Oro (Puntos): {self.motor.heroe.puntaje}", True, (100, 255, 100)), (420, 280))
 
-        # --- PANEL INFERIOR: Configuraciones ---
         rect_config = pygame.Rect(100, 400, 600, 160)
         pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_config)
         pygame.draw.rect(self.motor.pantalla, COLOR_BLANCO, rect_config, 2)
-
         self.motor.pantalla.blit(self.motor.fuente.render("Configuración (Flechas: Ajustar/Mover | ENTER: Seleccionar)", True, COLOR_AMARILLO_MENU), (120, 410))
 
-        # Renderizar opciones interactivas
         for i, opcion in enumerate(self.opciones):
             color = COLOR_GIRASOL_ACENTO if i == self.opcion_seleccionada else COLOR_BLANCO
             marcador = "▶ " if i == self.opcion_seleccionada else "  "
-
-            if i == 0: 
-                texto = f"{marcador}Música: {int(self.motor.volumen_musica * 100)}%"
-                pos = (120, 460)
-            elif i == 1: 
-                texto = f"{marcador}Efectos SFX: {int(self.motor.volumen_sfx * 100)}%"
-                pos = (120, 500)
-            elif i == 2: 
-                estado_pant = "Completa" if self.motor.pantalla_completa else "Ventana"
-                texto = f"{marcador}Pantalla: {estado_pant}"
-                pos = (400, 460)
-            elif i == 3: 
-                texto = f"{marcador}Cerrar Menú"
-                pos = (400, 500)
-
+            if i == 0: texto = f"{marcador}Música: {int(self.motor.volumen_musica * 100)}%"; pos = (120, 460)
+            elif i == 1: texto = f"{marcador}Efectos SFX: {int(self.motor.volumen_sfx * 100)}%"; pos = (120, 500)
+            elif i == 2: estado_pant = "Completa" if self.motor.pantalla_completa else "Ventana"; texto = f"{marcador}Pantalla: {estado_pant}"; pos = (400, 460)
+            elif i == 3: texto = f"{marcador}Cerrar Menú"; pos = (400, 500)
             self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color), pos)
 
-
 class EstadoExploracion(EstadoJuego):
-    """Lógica de movimiento por el mapa y transiciones de zonas."""
     def manejar_evento(self, evento):
         if evento.type == pygame.KEYDOWN:
             if evento.key == pygame.K_t and self.motor.es_tienda:
@@ -184,42 +144,40 @@ class EstadoExploracion(EstadoJuego):
         self._verificar_colisiones_entidades()
 
     def _procesar_movimiento_heroe(self):
-        teclas_presionadas = pygame.key.get_pressed()
+        teclas = pygame.key.get_pressed()
         esta_moviendose = False
         
-        if teclas_presionadas[pygame.K_LEFT] or teclas_presionadas[pygame.K_a]:
+        if teclas[pygame.K_LEFT] or teclas[pygame.K_a]:
             self.motor.posicion_jugador_x -= VELOCIDAD_MOVIMIENTO
             self.motor.mirando_izquierda = True
             esta_moviendose = True
-        if teclas_presionadas[pygame.K_RIGHT] or teclas_presionadas[pygame.K_d]:
+        if teclas[pygame.K_RIGHT] or teclas[pygame.K_d]:
             self.motor.posicion_jugador_x += VELOCIDAD_MOVIMIENTO
             self.motor.mirando_izquierda = False
             esta_moviendose = True
-        if teclas_presionadas[pygame.K_UP] or teclas_presionadas[pygame.K_w]:
+        if teclas[pygame.K_UP] or teclas[pygame.K_w]:
             self.motor.posicion_jugador_y -= VELOCIDAD_MOVIMIENTO
             esta_moviendose = True
-        if teclas_presionadas[pygame.K_DOWN] or teclas_presionadas[pygame.K_s]:
+        if teclas[pygame.K_DOWN] or teclas[pygame.K_s]:
             self.motor.posicion_jugador_y += VELOCIDAD_MOVIMIENTO
             esta_moviendose = True
 
         self.motor.accion_actual_heroe = "WALK" if esta_moviendose else "IDLE"
         self.motor.posicion_jugador_y = max(0, min(self.motor.posicion_jugador_y, ALTO_VENTANA - 60 - TAMANO_CELDA))
-        
+
         if self.motor.posicion_jugador_x > ANCHO_VENTANA - TAMANO_CELDA:
             if self.motor.indice_zona_actual < len(self.motor.mundo.zonas) - 1:
                 self.motor.indice_zona_actual += 1
                 self.motor.cargar_zona()
                 self.motor.posicion_jugador_x = 0 
                 self.motor.heroe.zonas_exploradas += 1 
-            else: 
-                self.motor.posicion_jugador_x = ANCHO_VENTANA - TAMANO_CELDA 
+            else: self.motor.posicion_jugador_x = ANCHO_VENTANA - TAMANO_CELDA 
         elif self.motor.posicion_jugador_x < 0:
             if self.motor.indice_zona_actual > 0:
                 self.motor.indice_zona_actual -= 1
                 self.motor.cargar_zona()
                 self.motor.posicion_jugador_x = ANCHO_VENTANA - TAMANO_CELDA 
-            else: 
-                self.motor.posicion_jugador_x = 0 
+            else: self.motor.posicion_jugador_x = 0 
 
     def _verificar_colisiones_entidades(self):
         rectangulo_heroe = pygame.Rect(self.motor.posicion_jugador_x, self.motor.posicion_jugador_y, TAMANO_CELDA, TAMANO_CELDA)
@@ -231,7 +189,6 @@ class EstadoExploracion(EstadoJuego):
                 self.motor.mensaje_combate = f"¡Emboscada! {self.motor.enemigo_en_zona.nombre} te ataca."
                 self.motor.posicion_jugador_x -= 40 
                 self.motor.efecto_combate_activo = None 
-                
                 if self.motor.usar_sonidos:
                     pygame.mixer.music.load(os.path.join("assets", "Sonidos", "fight soundtrack.ogg"))
                     pygame.mixer.music.play(-1)
@@ -246,9 +203,7 @@ class EstadoExploracion(EstadoJuego):
                 else:
                     self.motor.heroe.recolectar_objeto(self.motor.objeto_en_zona)
                     self.motor.heroe.ganar_puntaje(50) 
-                    if self.motor.usar_sonidos: 
-                        self.motor.sonido_moneda.play()
-                        
+                    if self.motor.usar_sonidos: self.motor.sonido_moneda.play()
                 self.motor.mundo.zonas[self.motor.indice_zona_actual].objeto = None
                 self.motor.objeto_en_zona = None
 
@@ -257,8 +212,7 @@ class EstadoExploracion(EstadoJuego):
             for x in range(0, ANCHO_VENTANA, TAMANO_CELDA):
                 for y in range(0, ALTO_VENTANA - 60, TAMANO_CELDA):
                     self.motor.pantalla.blit(self.motor.imagen_suelo, (x, y))
-        else: 
-            self.motor.pantalla.fill(COLOR_VERDE_PASTO)
+        else: self.motor.pantalla.fill(COLOR_VERDE_PASTO)
             
         if self.motor.es_tienda:
             pygame.draw.rect(self.motor.pantalla, COLOR_MORADO_MERCADER, self.motor.rectangulo_mercader)
@@ -266,8 +220,7 @@ class EstadoExploracion(EstadoJuego):
             self.motor.pantalla.blit(texto_tienda, (ANCHO_VENTANA//2 - texto_tienda.get_width()//2, 160))
             
         if self.motor.objeto_en_zona:
-            if self.motor.imagen_objeto: 
-                self.motor.pantalla.blit(self.motor.imagen_objeto, self.motor.rectangulo_objeto.topleft)
+            if self.motor.imagen_objeto: self.motor.pantalla.blit(self.motor.imagen_objeto, self.motor.rectangulo_objeto.topleft)
             else:
                 color_obj = (139, 0, 0) if hasattr(self.motor.objeto_en_zona, 'dano_explosion') else COLOR_NARANJA_TESORO
                 pygame.draw.rect(self.motor.pantalla, color_obj, self.motor.rectangulo_objeto)
@@ -275,75 +228,59 @@ class EstadoExploracion(EstadoJuego):
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             if self.motor.usar_sprites:
                 indice_frame = self.motor.indice_animacion % len(self.motor.anim_enemigo_idle)
-                self.motor.pantalla.blit(self.motor.anim_enemigo_idle[indice_frame], self.motor.rectangulo_enemigo.topleft)
-            else: 
-                pygame.draw.rect(self.motor.pantalla, COLOR_ROJO_ENEMIGO, self.motor.rectangulo_enemigo)
+                pos_e_x = self.motor.rectangulo_enemigo.x - OFFSET_X
+                pos_e_y = self.motor.rectangulo_enemigo.y - OFFSET_Y
+                self.motor.pantalla.blit(self.motor.anim_enemigo_idle[indice_frame], (pos_e_x, pos_e_y))
+            else: pygame.draw.rect(self.motor.pantalla, COLOR_ROJO_ENEMIGO, self.motor.rectangulo_enemigo)
                 
         if self.motor.usar_sprites:
             lista_frames = self.motor.anim_heroe_walk if self.motor.accion_actual_heroe == "WALK" else self.motor.anim_heroe_idle
             indice_frame = self.motor.indice_animacion % len(lista_frames)
             imagen_actual = lista_frames[indice_frame]
+            if self.motor.mirando_izquierda: imagen_actual = pygame.transform.flip(imagen_actual, True, False)
             
-            if self.motor.mirando_izquierda: 
-                imagen_actual = pygame.transform.flip(imagen_actual, True, False)
-                
-            self.motor.pantalla.blit(imagen_actual, (self.motor.posicion_jugador_x, self.motor.posicion_jugador_y))
+            pos_h_x = self.motor.posicion_jugador_x - OFFSET_X
+            pos_h_y = self.motor.posicion_jugador_y - OFFSET_Y
+            self.motor.pantalla.blit(imagen_actual, (pos_h_x, pos_h_y))
         else:
             rect_h = pygame.Rect(self.motor.posicion_jugador_x, self.motor.posicion_jugador_y, TAMANO_CELDA, TAMANO_CELDA)
             pygame.draw.rect(self.motor.pantalla, COLOR_AZUL_HEROE, rect_h)
 
-
 class EstadoCombate(EstadoJuego):
-    """Pantalla de batalla por turnos con vista lateral JRPG e indicadores de daño."""
     def manejar_evento(self, evento):
-        if evento.type != pygame.KEYDOWN: 
-            return
-            
+        if evento.type != pygame.KEYDOWN: return
         if self.motor.turno_actual == "JUGADOR":
             if evento.key == pygame.K_a:
-                if self.motor.usar_sonidos: 
-                    self.motor.sonido_ataque.play()
+                if self.motor.usar_sonidos: self.motor.sonido_ataque.play()
                 self.motor.efecto_combate_activo = "HEROE_ATACA"
                 self.motor.tiempo_inicio_efecto = pygame.time.get_ticks()
                 self.motor.indice_animacion = 0 
-                
                 danio = SistemaCombate.calcular_dano(self.motor.heroe.ataque, self.motor.enemigo_en_zona.defensa)
                 self.motor.enemigo_en_zona.recibir_dano(danio)
-                self.motor.mensaje_combate = f"¡{self.motor.heroe.nombre} corta con fuerza! Causa {danio} de daño."
-                
+                self.motor.mensaje_combate = f"¡{self.motor.heroe.nombre} ataca! Causa {danio} de daño."
                 texto_danio = TextoFlotante(f"-{danio}", 500, 150, COLOR_BLANCO, self.motor.fuente_gigante)
                 self.motor.textos_flotantes.append(texto_danio)
-                
-                if not self.motor.enemigo_en_zona.esta_vivo():
-                    self.motor.turno_actual = "VICTORIA"
-                else:
-                    self.motor.turno_actual = "ENEMIGO"
-                    
+                if not self.motor.enemigo_en_zona.esta_vivo(): self.motor.turno_actual = "VICTORIA"
+                else: self.motor.turno_actual = "ENEMIGO"
         elif self.motor.turno_actual == "ENEMIGO":
             if evento.key == pygame.K_SPACE:
                 self.motor.efecto_combate_activo = "ENEMIGO_ATACA"
                 self.motor.tiempo_inicio_efecto = pygame.time.get_ticks()
                 self.motor.indice_animacion = 0
-                
                 danio = SistemaCombate.calcular_dano(self.motor.enemigo_en_zona.ataque, self.motor.heroe.defensa)
                 self.motor.heroe.recibir_dano(danio)
-                self.motor.mensaje_combate = f"¡{self.motor.enemigo_en_zona.nombre} ruge y causa {danio} de daño!"
-                
+                self.motor.mensaje_combate = f"¡{self.motor.enemigo_en_zona.nombre} contraataca! Causa {danio} de daño."
                 texto_danio = TextoFlotante(f"-{danio}", 200, 150, COLOR_ROJO_ENEMIGO, self.motor.fuente_gigante)
                 self.motor.textos_flotantes.append(texto_danio)
-                
                 if not self.motor.heroe.esta_vivo():
                     self.motor.turno_actual = "DERROTA"
                     self.motor.estado_fin.es_victoria = False
-                else: 
-                    self.motor.turno_actual = "JUGADOR"
-                    
+                else: self.motor.turno_actual = "JUGADOR"
         elif self.motor.turno_actual == "VICTORIA":
             if evento.key == pygame.K_RETURN:
                 self.motor.heroe.ganar_experiencia(100)
                 self.motor.efecto_combate_activo = None
                 self.motor.textos_flotantes.clear() 
-                
                 if self.motor.enemigo_en_zona.nombre == "Rey Demonio":
                     self.motor.estado_fin.es_victoria = True
                     self.motor.estado_actual = self.motor.estado_fin
@@ -352,7 +289,6 @@ class EstadoCombate(EstadoJuego):
                     if self.motor.usar_sonidos:
                         pygame.mixer.music.load(os.path.join("assets", "Sonidos", "game soundtrack.mp3"))
                         pygame.mixer.music.play(-1)
-                        
         elif self.motor.turno_actual == "DERROTA":
             if evento.key == pygame.K_RETURN:
                 self.motor.textos_flotantes.clear()
@@ -361,15 +297,12 @@ class EstadoCombate(EstadoJuego):
     def actualizar(self):
         for texto in self.motor.textos_flotantes[:]:
             texto.actualizar()
-            if texto.opacidad <= 0:
-                self.motor.textos_flotantes.remove(texto)
+            if texto.opacidad <= 0: self.motor.textos_flotantes.remove(texto)
 
     def dibujar(self):
         self.motor.pantalla.fill(COLOR_NEGRO_FONDO)
-        
         texto_vs = self.motor.fuente_grande.render(f"VS {self.motor.enemigo_en_zona.nombre}", True, COLOR_ROJO_ENEMIGO)
         texto_vida_e = self.motor.fuente.render(f"Vida Enemigo: {self.motor.enemigo_en_zona.puntos_vida}", True, COLOR_BLANCO)
-        
         self.motor.pantalla.blit(texto_vs, (ANCHO_VENTANA // 2 - texto_vs.get_width() // 2, 30))
         self.motor.pantalla.blit(texto_vida_e, (ANCHO_VENTANA // 2 - texto_vida_e.get_width() // 2, 80))
         
@@ -377,75 +310,87 @@ class EstadoCombate(EstadoJuego):
             tiempo_actual = pygame.time.get_ticks()
             duracion = tiempo_actual - self.motor.tiempo_inicio_efecto
             
-            if self.motor.efecto_combate_activo == "HEROE_ATACA" and duracion < 600:
-                frame_idx = min(self.motor.indice_animacion, len(self.motor.anim_heroe_attack) - 1)
-                img_heroe = self.motor.anim_heroe_attack[frame_idx]
-            else:
-                frame_idx = self.motor.indice_animacion % len(self.motor.anim_heroe_idle)
-                img_heroe = self.motor.anim_heroe_idle[frame_idx]
+            if self.motor.efecto_combate_activo == "HEROE_ATACA" and duracion < 600: frame_idx = min(self.motor.indice_animacion, len(self.motor.anim_heroe_attack) - 1); img_heroe = self.motor.anim_heroe_attack[frame_idx]
+            else: frame_idx = self.motor.indice_animacion % len(self.motor.anim_heroe_idle); img_heroe = self.motor.anim_heroe_idle[frame_idx]
                 
-            if self.motor.efecto_combate_activo == "ENEMIGO_ATACA" and duracion < 600:
-                frame_idx = min(self.motor.indice_animacion, len(self.motor.anim_enemigo_attack) - 1)
-                img_enemigo = self.motor.anim_enemigo_attack[frame_idx]
-            else:
-                frame_idx = self.motor.indice_animacion % len(self.motor.anim_enemigo_idle)
-                img_enemigo = self.motor.anim_enemigo_idle[frame_idx]
+            if self.motor.efecto_combate_activo == "ENEMIGO_ATACA" and duracion < 600: frame_idx = min(self.motor.indice_animacion, len(self.motor.anim_enemigo_attack) - 1); img_enemigo = self.motor.anim_enemigo_attack[frame_idx]
+            else: frame_idx = self.motor.indice_animacion % len(self.motor.anim_enemigo_idle); img_enemigo = self.motor.anim_enemigo_idle[frame_idx]
                 
-            self.motor.pantalla.blit(pygame.transform.scale(img_heroe, (192, 192)), (150, 120))
-            enemigo_g = pygame.transform.scale(img_enemigo, (192, 192))
-            self.motor.pantalla.blit(pygame.transform.flip(enemigo_g, True, False), (450, 120))
+            self.motor.pantalla.blit(pygame.transform.scale(img_heroe, (250, 250)), (100, 100))
+            enemigo_g = pygame.transform.scale(img_enemigo, (250, 250))
+            self.motor.pantalla.blit(pygame.transform.flip(enemigo_g, True, False), (450, 100))
             
         rect_mensaje = pygame.Rect(100, 350, 600, 150)
         pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_mensaje)
         pygame.draw.rect(self.motor.pantalla, COLOR_AMARILLO_MENU, rect_mensaje, 3)
+        self.motor.pantalla.blit(self.motor.fuente.render(self.motor.mensaje_combate, True, COLOR_BLANCO), (120, 370))
         
-        txt_msg = self.motor.fuente.render(self.motor.mensaje_combate, True, COLOR_BLANCO)
-        self.motor.pantalla.blit(txt_msg, (120, 370))
-        
-        if self.motor.turno_actual == "JUGADOR": 
-            inst = "▶ Presiona 'A' para Atacar"; color_inst = COLOR_AMARILLO_MENU
-        elif self.motor.turno_actual == "ENEMIGO": 
-            inst = "▶ Presiona 'ESPACIO' para recibir ataque"; color_inst = COLOR_AMARILLO_MENU
-        elif self.motor.turno_actual == "VICTORIA": 
-            inst = "▶ ¡Victoria! Presiona 'ENTER' para seguir"; color_inst = (100, 255, 100)
-        elif self.motor.turno_actual == "DERROTA": 
-            inst = "▶ Has caído... Presiona 'ENTER'"; color_inst = COLOR_ROJO_ENEMIGO
+        if self.motor.turno_actual == "JUGADOR": inst = "▶ Presiona 'A' para Atacar"; color_inst = COLOR_AMARILLO_MENU
+        elif self.motor.turno_actual == "ENEMIGO": inst = "▶ Presiona 'ESPACIO' para recibir ataque"; color_inst = COLOR_AMARILLO_MENU
+        elif self.motor.turno_actual == "VICTORIA": inst = "▶ ¡Victoria! Presiona 'ENTER' para seguir"; color_inst = (100, 255, 100)
+        elif self.motor.turno_actual == "DERROTA": inst = "▶ Has caído... Presiona 'ENTER'"; color_inst = COLOR_ROJO_ENEMIGO
             
-        render_inst = self.motor.fuente.render(inst, True, color_inst)
-        self.motor.pantalla.blit(render_inst, (120, 450))
-
-        for texto in self.motor.textos_flotantes:
-            texto.dibujar(self.motor.pantalla)
+        self.motor.pantalla.blit(self.motor.fuente.render(inst, True, color_inst), (120, 450))
+        for texto in self.motor.textos_flotantes: texto.dibujar(self.motor.pantalla)
 
 class EstadoTienda(EstadoJuego):
-    """Menú de compras interactivo."""
+    """Interfaz gráfica rediseñada para el mercado."""
     def manejar_evento(self, evento):
         if evento.type != pygame.KEYDOWN: return
         if evento.key == pygame.K_b:
             if self.motor.heroe.puntaje >= self.motor.objeto_tienda.precio_compra:
                 self.motor.heroe.puntaje -= self.motor.objeto_tienda.precio_compra
                 self.motor.heroe.equipar(self.motor.objeto_tienda)
-                self.motor.mensaje_tienda = f"¡Equipado: {self.motor.objeto_tienda.nombre}!"
-                self.motor.objeto_tienda = Equipamiento("Armadura Épica", 5, 20, 300, 150)
-            else: self.motor.mensaje_tienda = "No tienes puntos suficientes."
-        elif evento.key == pygame.K_RETURN or evento.key == pygame.K_ESCAPE:
+                if self.motor.usar_sonidos: self.motor.sonido_moneda.play()
+                
+                self.motor.mensaje_tienda = f"¡Buena elección! Te has equipado {self.motor.objeto_tienda.nombre}."
+                # Generamos una armadura progresivamente más cara e interesante
+                n_atk = self.motor.objeto_tienda.aumento_ataque + 5
+                n_def = self.motor.objeto_tienda.aumento_defensa + 5
+                n_precio = self.motor.objeto_tienda.precio_compra + 100
+                self.motor.objeto_tienda = Equipamiento(f"Arma Mejorada +{n_atk}", n_atk, n_def, n_precio, n_precio//2)
+            else: 
+                self.motor.mensaje_tienda = "Lo siento, no tienes suficiente Oro para eso."
+        elif evento.key == pygame.K_RETURN or evento.key == pygame.K_ESCAPE: 
             self.motor.estado_actual = self.motor.estado_exploracion 
 
     def dibujar(self):
-        self.motor.pantalla.fill(COLOR_NEGRO_FONDO)
-        titulo_t = self.motor.fuente_grande.render("Refugio del Mercader", True, COLOR_MORADO_MERCADER)
-        self.motor.pantalla.blit(titulo_t, (ANCHO_VENTANA // 2 - titulo_t.get_width() // 2, 50))
+        # 1. Efecto inmersivo: el mundo pausado y oscurecido
+        self.motor.estado_exploracion.dibujar()
+        superficie = pygame.Surface((ANCHO_VENTANA, ALTO_VENTANA))
+        superficie.set_alpha(235)
+        superficie.fill((20, 15, 30)) # Tono púrpura nocturno
+        self.motor.pantalla.blit(superficie, (0, 0))
+
+        # 2. Letrero Central
+        titulo = self.motor.fuente_gigante.render("~ El Refugio del Mercader ~", True, COLOR_MORADO_MERCADER)
+        self.motor.pantalla.blit(titulo, (ANCHO_VENTANA // 2 - titulo.get_width() // 2, 40))
+
+        # 3. PANEL IZQUIERDO: Estadísticas del Jugador
+        rect_jugador = pygame.Rect(50, 130, 320, 220)
+        # Usamos border_radius para que se vea moderno y estilizado
+        pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_jugador, border_radius=15)
+        pygame.draw.rect(self.motor.pantalla, COLOR_BLANCO, rect_jugador, 2, border_radius=15)
         
-        rect_item = pygame.Rect(200, 150, 400, 200)
-        pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_item)
-        pygame.draw.rect(self.motor.pantalla, COLOR_GIRASOL_ACENTO, rect_item, 2)
+        self.motor.pantalla.blit(self.motor.fuente_grande.render("Tus Bolsillos", True, COLOR_BLANCO), (70, 140))
+        self.motor.pantalla.blit(self.motor.fuente.render(f"Oro disponible: {self.motor.heroe.puntaje} pts", True, (100, 255, 100)), (70, 200))
+        self.motor.pantalla.blit(self.motor.fuente.render(f"Ataque actual: {self.motor.heroe.ataque}", True, COLOR_AMARILLO_MENU), (70, 240))
+        self.motor.pantalla.blit(self.motor.fuente.render(f"Defensa actual: {self.motor.heroe.defensa}", True, COLOR_AMARILLO_MENU), (70, 280))
+
+        # 4. PANEL DERECHO: Objeto en Venta (Estilo "Carta")
+        rect_item = pygame.Rect(420, 130, 330, 220)
+        pygame.draw.rect(self.motor.pantalla, (40, 20, 50), rect_item, border_radius=15) 
+        pygame.draw.rect(self.motor.pantalla, COLOR_GIRASOL_ACENTO, rect_item, 3, border_radius=15)
         
-        self.motor.pantalla.blit(self.motor.fuente_grande.render(self.motor.objeto_tienda.nombre, True, COLOR_AMARILLO_MENU), (ANCHO_VENTANA // 2 - 150, 170))
-        self.motor.pantalla.blit(self.motor.fuente.render(f"+{self.motor.objeto_tienda.aumento_ataque} ATK / +{self.motor.objeto_tienda.aumento_defensa} DEF", True, COLOR_BLANCO), (ANCHO_VENTANA // 2 - 100, 230))
-        self.motor.pantalla.blit(self.motor.fuente.render(f"Costo: {self.motor.objeto_tienda.precio_compra} Puntos", True, (100, 255, 100)), (ANCHO_VENTANA // 2 - 80, 280))
+        self.motor.pantalla.blit(self.motor.fuente_grande.render("Oferta del Día", True, COLOR_GIRASOL_ACENTO), (440, 140))
+        self.motor.pantalla.blit(self.motor.fuente.render(f"[{self.motor.objeto_tienda.nombre}]", True, COLOR_BLANCO), (440, 200))
+        self.motor.pantalla.blit(self.motor.fuente.render(f"Mejora: +{self.motor.objeto_tienda.aumento_ataque} ATK | +{self.motor.objeto_tienda.aumento_defensa} DEF", True, (100, 200, 255)), (440, 240))
+        self.motor.pantalla.blit(self.motor.fuente.render(f"Precio: {self.motor.objeto_tienda.precio_compra} Oro", True, (255, 100, 100)), (440, 280))
+
+        # 5. PANEL INFERIOR: Diálogo y Controles
+        rect_msg = pygame.Rect(50, 380, 700, 130)
+        pygame.draw.rect(self.motor.pantalla, COLOR_NEGRO_FONDO, rect_msg, border_radius=10)
+        pygame.draw.rect(self.motor.pantalla, COLOR_MORADO_MERCADER, rect_msg, 3, border_radius=10)
         
-        rect_msg_t = pygame.Rect(100, 400, 600, 120)
-        pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_msg_t)
-        pygame.draw.rect(self.motor.pantalla, COLOR_MORADO_MERCADER, rect_msg_t, 3)
-        self.motor.pantalla.blit(self.motor.fuente.render(self.motor.mensaje_tienda, True, COLOR_BLANCO), (120, 420))
-        self.motor.pantalla.blit(self.motor.fuente.render("▶ 'B' Comprar | 'ENTER' Salir", True, COLOR_AMARILLO_MENU), (120, 480))
+        self.motor.pantalla.blit(self.motor.fuente.render(f"Mercader: \"{self.motor.mensaje_tienda}\"", True, COLOR_BLANCO), (80, 400))
+        self.motor.pantalla.blit(self.motor.fuente.render("[ B ] Comprar Oferta         [ ENTER ] Salir de la Tienda", True, COLOR_AMARILLO_MENU), (80, 460))
