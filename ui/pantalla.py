@@ -2,28 +2,23 @@
 import pygame
 import os
 import random
+import json
 from ui.constantes import *
 from ui.estados import (EstadoMenuPrincipal, EstadoExploracion, EstadoCombate, 
                         EstadoTienda, EstadoFinJuego, EstadoPausa)
 from models.personaje import Personaje
 from core.escenario import Escenario
-from models.objeto import Equipamiento
-
-# =================================================================
-# CLASE PRINCIPAL: MOTOR GRÁFICO (CONTEXTO)
-# =================================================================
+from models.objeto import Equipamiento, Tesoro
 
 class MotorGrafico:
     def __init__(self, heroe: Personaje, mundo: Escenario):
         pygame.init()
         pygame.mixer.init()
         
-        # --- NUEVO: Configuraciones Globales ---
         self.pantalla_completa = False
         self.volumen_musica = 0.5
         self.volumen_sfx = 0.5
         
-        # Iniciamos con SCALED para permitir el paso a pantalla completa fluidamente
         self.pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA), pygame.SCALED)
         pygame.display.set_caption("La Leyenda de los 17 Girasoles")
         self.reloj = pygame.time.Clock()
@@ -37,7 +32,6 @@ class MotorGrafico:
         self.fuente_grande = pygame.font.SysFont("Arial", 40, bold=True)
         self.fuente_gigante = pygame.font.SysFont("Arial", 55, bold=True)
         
-        # Instancias de Estados
         self.estado_menu = EstadoMenuPrincipal(self)
         self.estado_exploracion = EstadoExploracion(self)
         self.estado_combate = EstadoCombate(self)
@@ -47,7 +41,6 @@ class MotorGrafico:
         
         self.estado_actual = self.estado_menu 
         
-        # Variables de Sistema Compartidas
         self.turno_actual = "JUGADOR"
         self.mensaje_combate = "¡Un enemigo bloquea el paso!"
         self.mensaje_tienda = "¡Bienvenido! ¿Qué vas a llevar?"
@@ -69,7 +62,6 @@ class MotorGrafico:
         self.cargar_sonidos()
         self.cargar_zona() 
 
-    # --- NUEVOS MÉTODOS DE CONFIGURACIÓN ---
     def alternar_pantalla_completa(self):
         self.pantalla_completa = not self.pantalla_completa
         if self.pantalla_completa:
@@ -87,7 +79,7 @@ class MotorGrafico:
             self.sonido_ataque.set_volume(self.volumen_sfx)
             self.sonido_moneda.set_volume(self.volumen_sfx)
             for paso in self.sonidos_pasos:
-                paso.set_volume(self.volumen_sfx * 0.4) # Los pasos siempre suenan un poco más bajo
+                paso.set_volume(self.volumen_sfx * 0.4) 
 
     def cargar_zona(self):
         zona_actual = self.mundo.zonas[self.indice_zona_actual]
@@ -118,14 +110,19 @@ class MotorGrafico:
         self.usar_sprites = False
         self.imagen_objeto = None
         try:
-            esc = (TAMANO_CELDA, TAMANO_CELDA) 
-            self.anim_heroe_idle = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Idle.png"), esc)
-            self.anim_heroe_walk = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Walk.png"), esc)
-            self.anim_heroe_attack = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Attack01.png"), esc)
-            self.anim_enemigo_idle = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Idle.png"), esc)
-            self.anim_enemigo_attack = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Attack01.png"), esc)
-            self.imagen_suelo = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Suelo", "Grass_Middle.png")).convert(), esc)
-            try: self.imagen_objeto = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objeto", "item.png")).convert_alpha(), esc)
+            esc_mapa = (TAMANO_CELDA, TAMANO_CELDA) 
+            esc_personaje = (ESCALA_PERSONAJE, ESCALA_PERSONAJE)
+            
+            self.anim_heroe_idle = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Idle.png"), esc_personaje)
+            self.anim_heroe_walk = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Walk.png"), esc_personaje)
+            self.anim_heroe_attack = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Attack01.png"), esc_personaje)
+            
+            self.anim_enemigo_idle = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Idle.png"), esc_personaje)
+            self.anim_enemigo_attack = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Attack01.png"), esc_personaje)
+            
+            self.imagen_suelo = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Suelo", "Grass_Middle.png")).convert(), esc_mapa)
+            
+            try: self.imagen_objeto = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objeto", "item.png")).convert_alpha(), esc_mapa)
             except: pass
             
             self.usar_sprites = True
@@ -143,13 +140,11 @@ class MotorGrafico:
                 paso = pygame.mixer.Sound(os.path.join("assets", "Sonidos", f"footstep0{i}.ogg"))
                 self.sonidos_pasos.append(paso)
             
-            # Aplicamos los volúmenes iniciales
             self.ajustar_volumen_sfx(0)
             pygame.mixer.music.set_volume(self.volumen_musica)
-            
             self.usar_sonidos = True
         except Exception as error: 
-            print(f"Jugando en silencio. Error cargando sonidos: {error}")
+            print(f"Jugando en silencio. Error: {error}")
 
     def manejar_eventos(self):
         for evento in pygame.event.get():
@@ -176,16 +171,12 @@ class MotorGrafico:
 
     def actualizar(self):
         self.estado_actual.actualizar()
-        
         tiempo_actual = pygame.time.get_ticks()
         if tiempo_actual - self.tiempo_ultima_animacion > self.velocidad_animacion_ms:
             self.tiempo_ultima_animacion = tiempo_actual
             self.indice_animacion += 1
-            
             if self.accion_actual_heroe == "WALK" and self.usar_sonidos:
-                if self.indice_animacion % 2 == 0: 
-                    random.choice(self.sonidos_pasos).play()
-            
+                if self.indice_animacion % 2 == 0: random.choice(self.sonidos_pasos).play()
         self.reloj.tick(FOTOGRAMAS_POR_SEGUNDO)
 
     def dibujar(self):
@@ -195,3 +186,66 @@ class MotorGrafico:
 
     def salir(self): 
         pygame.quit()
+
+    # =========================================================
+    # LÓGICA DE PERSISTENCIA (GUARDADO Y CARGA EN JSON)
+    # =========================================================
+    def guardar_partida(self):
+        datos_guardado = {
+            "zona_actual": self.indice_zona_actual,
+            "heroe": {
+                "nombre": self.heroe.nombre,
+                "puntos_vida": self.heroe.puntos_vida,
+                "puntos_vida_max": getattr(self.heroe, "puntos_vida_max", 100),
+                "ataque": self.heroe.ataque,
+                "defensa": self.heroe.defensa,
+                "nivel": getattr(self.heroe, "nivel", 1),
+                "experiencia": getattr(self.heroe, "experiencia", 0),
+                "puntaje": self.heroe.puntaje,
+                "zonas_exploradas": getattr(self.heroe, "zonas_exploradas", 0),
+                # Guardamos los nombres de los objetos para reconstruirlos
+                "inventario": [{"nombre": obj.nombre} for obj in self.heroe.inventario]
+            }
+        }
+        try:
+            with open("savegame.json", "w") as archivo:
+                json.dump(datos_guardado, archivo, indent=4)
+            return True
+        except Exception as e:
+            print(f"Error al guardar partida: {e}")
+            return False
+
+    def cargar_partida(self):
+        if not os.path.exists("savegame.json"):
+            return False
+            
+        try:
+            with open("savegame.json", "r") as archivo:
+                datos = json.load(archivo)
+            
+            # 1. Restaurar posición en el mapa
+            self.indice_zona_actual = datos["zona_actual"]
+            
+            # 2. Restaurar estadísticas del héroe
+            d_heroe = datos["heroe"]
+            self.heroe.nombre = d_heroe["nombre"]
+            self.heroe.puntos_vida = d_heroe["puntos_vida"]
+            self.heroe.ataque = d_heroe["ataque"]
+            self.heroe.defensa = d_heroe["defensa"]
+            self.heroe.puntaje = d_heroe["puntaje"]
+            
+            if hasattr(self.heroe, "puntos_vida_max"): self.heroe.puntos_vida_max = d_heroe["puntos_vida_max"]
+            if hasattr(self.heroe, "nivel"): self.heroe.nivel = d_heroe["nivel"]
+            if hasattr(self.heroe, "experiencia"): self.heroe.experiencia = d_heroe["experiencia"]
+            if hasattr(self.heroe, "zonas_exploradas"): self.heroe.zonas_exploradas = d_heroe["zonas_exploradas"]
+            
+            # 3. Restaurar inventario creando objetos Tesoro genéricos para la UI
+            self.heroe.inventario = []
+            for obj in d_heroe["inventario"]:
+                self.heroe.inventario.append(Tesoro(obj["nombre"], valor_monetario=0))
+            
+            self.cargar_zona()
+            return True
+        except Exception as e:
+            print(f"Error al cargar partida: {e}")
+            return False
