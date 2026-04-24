@@ -88,12 +88,10 @@ class MotorGrafico:
         self.es_tienda = zona_actual.es_tienda
         self.nombre_zona_actual = zona_actual.nombre
         
-        # --- NUEVO: Inicializamos la posición matemática de la IA del enemigo ---
         if self.enemigo_en_zona: 
             start_x = 600
             start_y = 300
             self.enemigo_en_zona.inicializar_posicion(start_x, start_y)
-            # El rectangulo se usará en exploración, pero lo vincularemos a sus coordenadas dinámicas
             self.rectangulo_enemigo = pygame.Rect(self.enemigo_en_zona.x, self.enemigo_en_zona.y, TAMANO_CELDA, TAMANO_CELDA)
             
         if self.objeto_en_zona: 
@@ -125,7 +123,6 @@ class MotorGrafico:
             
             self.anim_enemigo_idle = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Idle.png"), esc_personaje)
             self.anim_enemigo_attack = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Attack01.png"), esc_personaje)
-            # Agregamos animación de caminar para el enemigo (puedes usar la de Idle si no tienes Walk cargada aún, pero asumimos que tienes un Orc-Walk similar)
             try:
                 self.anim_enemigo_walk = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Walk.png"), esc_personaje)
             except:
@@ -135,7 +132,23 @@ class MotorGrafico:
             
             try: self.imagen_objeto = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objeto", "item.png")).convert_alpha(), esc_mapa)
             except: pass
+
+            # =========================================================
+            # NUEVO: CREACIÓN DE LA MÁSCARA DE LUZ (FOG OF WAR)
+            # =========================================================
+            # Creamos una superficie con canal Alpha para transparencias
+            self.imagen_luz = pygame.Surface((500, 500), pygame.SRCALPHA)
+            self.imagen_luz.fill((255, 255, 255, 255)) # Relleno opaco sólido
             
+            # Dibujamos un gradiente circular recortando el canal Alpha de afuera hacia adentro
+            for radio in range(250, 60, -4):
+                # Matemáticas para desvanecer la luz gradualmente
+                alpha = int(((radio - 60) / 190) * 255)
+                pygame.draw.circle(self.imagen_luz, (255, 255, 255, alpha), (250, 250), radio)
+            
+            # El núcleo puro alrededor del héroe es totalmente transparente
+            pygame.draw.circle(self.imagen_luz, (255, 255, 255, 0), (250, 250), 60)
+
             self.usar_sprites = True
         except Exception as error: 
             print(f"Modo gráfico simplificado activado. Error: {error}")
