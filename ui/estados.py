@@ -4,11 +4,9 @@ import os
 import math
 from ui.constantes import *
 from ui.elementos import TextoFlotante
-# CORRECCIÓN: Eliminamos 'SistemaCombate' de esta línea porque ya no existe
 from core.combate import AtaqueBasico, GolpeEspecial, Curacion 
-from models.objeto import Equipamiento
+from models.objeto import Equipamiento, Consumible # <-- Importamos Consumible
 
-# Desfase visual para que el personaje grande pise justo sobre su hitbox lógico
 OFFSET_X = (ESCALA_PERSONAJE - TAMANO_CELDA) // 2
 OFFSET_Y = ESCALA_PERSONAJE - TAMANO_CELDA
 
@@ -89,25 +87,59 @@ class EstadoPausa(EstadoJuego):
         self.opciones = ["Guardar Partida", "Música", "Efectos (SFX)", "Pantalla Completa", "Volver al Juego"]
         self.opcion_seleccionada = 0
         self.mensaje_guardado = ""
+        
+        # --- NUEVO: Máquina de estados interna para el menú ---
+        self.modo_menu = "SISTEMA" # Puede ser "SISTEMA" o "INVENTARIO"
+        self.cursor_inventario = 0
 
     def manejar_evento(self, evento):
         if evento.type == pygame.KEYDOWN:
             self.mensaje_guardado = ""
-            if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_i: self.motor.estado_actual = self.motor.estado_exploracion
-            elif evento.key == pygame.K_UP: self.opcion_seleccionada = (self.opcion_seleccionada - 1) % len(self.opciones)
-            elif evento.key == pygame.K_DOWN: self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.opciones)
-            elif evento.key == pygame.K_LEFT:
-                if self.opcion_seleccionada == 1: self.motor.ajustar_volumen_musica(-0.1)
-                elif self.opcion_seleccionada == 2: self.motor.ajustar_volumen_sfx(-0.1)
-            elif evento.key == pygame.K_RIGHT:
-                if self.opcion_seleccionada == 1: self.motor.ajustar_volumen_musica(0.1)
-                elif self.opcion_seleccionada == 2: self.motor.ajustar_volumen_sfx(0.1)
-            elif evento.key == pygame.K_RETURN:
-                if self.opcion_seleccionada == 0:
-                    if self.motor.guardar_partida(): self.mensaje_guardado = "¡Progreso Guardado Exitosamente!"
-                    else: self.mensaje_guardado = "¡Error al guardar!"
-                elif self.opcion_seleccionada == 3: self.motor.alternar_pantalla_completa()
-                elif self.opcion_seleccionada == 4: self.motor.estado_actual = self.motor.estado_exploracion
+            
+            # --- Lógica Modo Sistema ---
+            if self.modo_menu == "SISTEMA":
+                if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_i: 
+                    self.motor.estado_actual = self.motor.estado_exploracion
+                elif evento.key == pygame.K_UP: 
+                    self.opcion_seleccionada = (self.opcion_seleccionada - 1) % len(self.opciones)
+                elif evento.key == pygame.K_DOWN: 
+                    self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.opciones)
+                elif evento.key == pygame.K_LEFT:
+                    if self.opcion_seleccionada == 1: self.motor.ajustar_volumen_musica(-0.1)
+                    elif self.opcion_seleccionada == 2: self.motor.ajustar_volumen_sfx(-0.1)
+                elif evento.key == pygame.K_RIGHT:
+                    # Saltamos a la mochila
+                    self.modo_menu = "INVENTARIO"
+                    self.cursor_inventario = 0
+                elif evento.key == pygame.K_RETURN:
+                    if self.opcion_seleccionada == 0:
+                        if self.motor.guardar_partida(): self.mensaje_guardado = "¡Progreso Guardado Exitosamente!"
+                        else: self.mensaje_guardado = "¡Error al guardar!"
+                    elif self.opcion_seleccionada == 3: self.motor.alternar_pantalla_completa()
+                    elif self.opcion_seleccionada == 4: self.motor.estado_actual = self.motor.estado_exploracion
+
+            # --- Lógica Modo Inventario Interactivo ---
+            elif self.modo_menu == "INVENTARIO":
+                inventario_actual = self.motor.heroe.inventario
+                if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_LEFT:
+                    self.modo_menu = "SISTEMA" # Volvemos a las opciones
+                elif evento.key == pygame.K_UP and len(inventario_actual) > 0:
+                    self.cursor_inventario = (self.cursor_inventario - 1) % len(inventario_actual)
+                elif evento.key == pygame.K_DOWN and len(inventario_actual) > 0:
+                    self.cursor_inventario = (self.cursor_inventario + 1) % len(inventario_actual)
+                elif evento.key == pygame.K_RETURN and len(inventario_actual) > 0:
+                    # Tomamos el objeto que estamos seleccionando
+                    objeto_seleccionado = inventario_actual[self.cursor_inventario]
+                    
+                    # POLIMORFISMO DE TIPO: Comprobamos si el objeto es un Consumible
+                    if isinstance(objeto_seleccionado, Consumible):
+                        objeto_seleccionado.usar(self.motor.heroe) # Lo usamos
+                        self.motor.heroe.inventario.remove(objeto_seleccionado) # Se gasta
+                        if self.motor.usar_sonidos: self.motor.sonido_moneda.play()
+                        
+                        # Ajustamos el cursor por si eliminamos el último elemento de la lista
+                        if self.cursor_inventario >= len(self.motor.heroe.inventario):
+                            self.cursor_inventario = max(0, len(self.motor.heroe.inventario) - 1)
 
     def dibujar(self):
         self.motor.estado_exploracion.dibujar()
@@ -119,49 +151,74 @@ class EstadoPausa(EstadoJuego):
         titulo = self.motor.fuente_gigante.render("Menú de Campamento", True, COLOR_GIRASOL_ACENTO)
         self.motor.pantalla.blit(titulo, (ANCHO_VENTANA // 2 - titulo.get_width() // 2, 30))
 
-        rect_stats = pygame.Rect(100, 100, 250, 260)
-        pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_stats)
-        pygame.draw.rect(self.motor.pantalla, COLOR_BLANCO, rect_stats, 2)
-        self.motor.pantalla.blit(self.motor.fuente_grande.render("Estadísticas", True, COLOR_BLANCO), (120, 110))
-
+        # PANEL IZQUIERDO (Stats y Opciones)
+        color_borde_izq = COLOR_GIRASOL_ACENTO if self.modo_menu == "SISTEMA" else COLOR_GRIS_PANEL
+        rect_stats = pygame.Rect(50, 100, 320, 420)
+        pygame.draw.rect(self.motor.pantalla, COLOR_NEGRO_FONDO, rect_stats, border_radius=10)
+        pygame.draw.rect(self.motor.pantalla, color_borde_izq, rect_stats, 3, border_radius=10)
+        
+        self.motor.pantalla.blit(self.motor.fuente_grande.render("Estado y Sistema", True, COLOR_BLANCO), (70, 110))
+        
         textos_stats = [
-            f"Héroe: {self.motor.heroe.nombre}",
-            f"HP: {self.motor.heroe.puntos_vida} / {self.motor.heroe.puntos_vida_max}",
-            f"MP: {self.motor.heroe.puntos_magia} / {self.motor.heroe.puntos_magia_max}",
+            f"Héroe: {self.motor.heroe.nombre} (Nvl {self.motor.heroe.nivel})",
+            f"HP: {self.motor.heroe.puntos_vida}/{self.motor.heroe.puntos_vida_max} | MP: {self.motor.heroe.puntos_magia}/{self.motor.heroe.puntos_magia_max}",
             f"ATK: {self.motor.heroe.ataque} | DEF: {self.motor.heroe.defensa}",
-            f"Zonas: {self.motor.heroe.zonas_exploradas}/20"
+            f"Oro: {self.motor.heroe.puntaje} pts"
         ]
         for indice, texto in enumerate(textos_stats):
-            self.motor.pantalla.blit(self.motor.fuente.render(texto, True, COLOR_AMARILLO_MENU), (120, 160 + (indice * 30)))
+            self.motor.pantalla.blit(self.motor.fuente.render(texto, True, COLOR_AMARILLO_MENU), (70, 160 + (indice * 30)))
 
-        rect_inv = pygame.Rect(400, 100, 300, 260)
-        pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_inv)
-        pygame.draw.rect(self.motor.pantalla, COLOR_GIRASOL_ACENTO, rect_inv, 2)
-        self.motor.pantalla.blit(self.motor.fuente_grande.render("Mochila", True, COLOR_BLANCO), (420, 110))
-        girasoles_encontrados = sum(1 for item in self.motor.heroe.inventario if "Girasol" in item.nombre)
-        self.motor.pantalla.blit(self.motor.fuente_grande.render(f"Girasoles: {girasoles_encontrados}", True, COLOR_GIRASOL_ACENTO), (420, 170))
-        self.motor.pantalla.blit(self.motor.fuente.render(f"Otros objetos: {len(self.motor.heroe.inventario) - girasoles_encontrados}", True, COLOR_BLANCO), (420, 230))
-        self.motor.pantalla.blit(self.motor.fuente.render(f"Oro (Puntos): {self.motor.heroe.puntaje}", True, (100, 255, 100)), (420, 280))
-
-        rect_config = pygame.Rect(100, 380, 600, 190)
-        pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_config)
-        pygame.draw.rect(self.motor.pantalla, COLOR_BLANCO, rect_config, 2)
+        pygame.draw.line(self.motor.pantalla, COLOR_GRIS_PANEL, (70, 300), (350, 300), 2)
         
-        texto_cabecera = self.mensaje_guardado if self.mensaje_guardado else "Ajustes del Sistema"
+        texto_cabecera = self.mensaje_guardado if self.mensaje_guardado else "Ajustes (Usa ◀ y ▶)"
         color_cabecera = (100, 255, 100) if self.mensaje_guardado else COLOR_BLANCO
-        self.motor.pantalla.blit(self.motor.fuente_grande.render(texto_cabecera, True, color_cabecera), (120, 390))
+        self.motor.pantalla.blit(self.motor.fuente.render(texto_cabecera, True, color_cabecera), (70, 320))
 
         for i, opcion in enumerate(self.opciones):
-            color = COLOR_GIRASOL_ACENTO if i == self.opcion_seleccionada else COLOR_BLANCO
-            marcador = "▶ " if i == self.opcion_seleccionada else "  "
-            
-            if i == 0: texto = f"{marcador}Guardar Progreso"; pos = (120, 440)
-            elif i == 1: texto = f"{marcador}Música: {int(self.motor.volumen_musica * 100)}%"; pos = (120, 480)
-            elif i == 2: texto = f"{marcador}Efectos SFX: {int(self.motor.volumen_sfx * 100)}%"; pos = (120, 520)
-            elif i == 3: estado_pant = "Completa" if self.motor.pantalla_completa else "Ventana"; texto = f"{marcador}Pantalla: {estado_pant}"; pos = (420, 440)
-            elif i == 4: texto = f"{marcador}Volver al Juego"; pos = (420, 480)
-            
-            self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color), pos)
+            color = COLOR_GIRASOL_ACENTO if (i == self.opcion_seleccionada and self.modo_menu == "SISTEMA") else (150, 150, 150)
+            marcador = "▶ " if (i == self.opcion_seleccionada and self.modo_menu == "SISTEMA") else "  "
+            if i == 0: texto = f"{marcador}Guardar Progreso"
+            elif i == 1: texto = f"{marcador}Música: {int(self.motor.volumen_musica * 100)}%"
+            elif i == 2: texto = f"{marcador}Efectos: {int(self.motor.volumen_sfx * 100)}%"
+            elif i == 3: texto = f"{marcador}Pantalla Completa"
+            elif i == 4: texto = f"{marcador}Cerrar Menú"
+            self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color), (70, 350 + (i*30)))
+
+
+        # PANEL DERECHO (Inventario Interactivo)
+        color_borde_der = COLOR_GIRASOL_ACENTO if self.modo_menu == "INVENTARIO" else COLOR_GRIS_PANEL
+        rect_inv = pygame.Rect(400, 100, 350, 420)
+        pygame.draw.rect(self.motor.pantalla, COLOR_NEGRO_FONDO, rect_inv, border_radius=10)
+        pygame.draw.rect(self.motor.pantalla, color_borde_der, rect_inv, 3, border_radius=10)
+        
+        self.motor.pantalla.blit(self.motor.fuente_grande.render("Tu Mochila", True, COLOR_BLANCO), (420, 110))
+        instruccion = "ENTER: Consumir | ◀ Volver" if self.modo_menu == "INVENTARIO" else "Presiona ▶ para gestionar"
+        self.motor.pantalla.blit(self.motor.fuente.render(instruccion, True, COLOR_AMARILLO_MENU), (420, 150))
+
+        inventario = self.motor.heroe.inventario
+        if len(inventario) == 0:
+            self.motor.pantalla.blit(self.motor.fuente.render("(La mochila está vacía)", True, (150,150,150)), (420, 200))
+        else:
+            # Dibujamos solo hasta 9 objetos para no salirnos de la pantalla
+            max_items = min(len(inventario), 9)
+            inicio_lista = 0
+            if self.cursor_inventario >= 9:
+                inicio_lista = self.cursor_inventario - 8
+                
+            for i in range(max_items):
+                idx_real = inicio_lista + i
+                item = inventario[idx_real]
+                
+                # Resaltamos el seleccionado
+                es_seleccionado = (idx_real == self.cursor_inventario and self.modo_menu == "INVENTARIO")
+                color_item = COLOR_BLANCO if es_seleccionado else (150, 150, 150)
+                marcador = "▶ " if es_seleccionado else "  "
+                
+                # Indicamos visualmente si es consumible
+                tipo_item = "[Poción]" if isinstance(item, Consumible) else "[Objeto]"
+                
+                texto_item = f"{marcador}{tipo_item} {item.nombre}"
+                self.motor.pantalla.blit(self.motor.fuente.render(texto_item, True, color_item), (420, 200 + (i * 25)))
 
 
 class EstadoExploracion(EstadoJuego):
@@ -176,7 +233,6 @@ class EstadoExploracion(EstadoJuego):
     def actualizar(self):
         self._procesar_movimiento_heroe()
         
-        # Inteligencia Artificial del Enemigo (Rango y Persecución)
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             self.motor.enemigo_en_zona.actualizar_ia(self.motor.posicion_jugador_x, self.motor.posicion_jugador_y)
             self.motor.rectangulo_enemigo.x = self.motor.enemigo_en_zona.x
@@ -272,10 +328,8 @@ class EstadoExploracion(EstadoJuego):
                 
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             if self.motor.usar_sprites:
-                if self.motor.enemigo_en_zona.estado_ia == "PERSIGUIENDO":
-                    anim_orco = self.motor.anim_enemigo_walk
-                else:
-                    anim_orco = self.motor.anim_enemigo_idle
+                if self.motor.enemigo_en_zona.estado_ia == "PERSIGUIENDO": anim_orco = self.motor.anim_enemigo_walk
+                else: anim_orco = self.motor.anim_enemigo_idle
                 
                 indice_frame = self.motor.indice_animacion % len(anim_orco)
                 imagen_orco = anim_orco[indice_frame]
@@ -427,19 +481,40 @@ class EstadoCombate(EstadoJuego):
 class EstadoTienda(EstadoJuego):
     def manejar_evento(self, evento):
         if evento.type != pygame.KEYDOWN: return
+        
         if evento.key == pygame.K_b:
             if self.motor.heroe.puntaje >= self.motor.objeto_tienda.precio_compra:
                 self.motor.heroe.puntaje -= self.motor.objeto_tienda.precio_compra
                 self.motor.heroe.equipar(self.motor.objeto_tienda)
                 if self.motor.usar_sonidos: self.motor.sonido_moneda.play()
                 
-                self.motor.mensaje_tienda = f"¡Buena elección! Te has equipado {self.motor.objeto_tienda.nombre}."
+                self.motor.mensaje_tienda = f"¡Equipado: {self.motor.objeto_tienda.nombre}!"
                 n_atk = self.motor.objeto_tienda.aumento_ataque + 5
                 n_def = self.motor.objeto_tienda.aumento_defensa + 5
                 n_precio = self.motor.objeto_tienda.precio_compra + 100
                 self.motor.objeto_tienda = Equipamiento(f"Arma Mejorada +{n_atk}", n_atk, n_def, n_precio, n_precio//2)
             else: 
-                self.motor.mensaje_tienda = "Lo siento, no tienes suficiente Oro para eso."
+                self.motor.mensaje_tienda = "No tienes suficiente Oro para el Arma."
+                
+        # --- NUEVO: COMPRA DE POCIONES MEDIANTE TECLAS RÁPIDAS ---
+        elif evento.key == pygame.K_1:
+            if self.motor.heroe.puntaje >= 30:
+                self.motor.heroe.puntaje -= 30
+                self.motor.heroe.recolectar_objeto(Consumible("Poción de Vida", "HP", 50, 30))
+                self.motor.mensaje_tienda = "¡Poción de Vida guardada en tu mochila!"
+                if self.motor.usar_sonidos: self.motor.sonido_moneda.play()
+            else:
+                self.motor.mensaje_tienda = "Oro insuficiente para la poción."
+                
+        elif evento.key == pygame.K_2:
+            if self.motor.heroe.puntaje >= 30:
+                self.motor.heroe.puntaje -= 30
+                self.motor.heroe.recolectar_objeto(Consumible("Poción de Maná", "MP", 50, 30))
+                self.motor.mensaje_tienda = "¡Poción de Maná guardada en tu mochila!"
+                if self.motor.usar_sonidos: self.motor.sonido_moneda.play()
+            else:
+                self.motor.mensaje_tienda = "Oro insuficiente para la poción."
+
         elif evento.key == pygame.K_RETURN or evento.key == pygame.K_ESCAPE: 
             self.motor.estado_actual = self.motor.estado_exploracion 
 
@@ -466,14 +541,16 @@ class EstadoTienda(EstadoJuego):
         pygame.draw.rect(self.motor.pantalla, (40, 20, 50), rect_item, border_radius=15) 
         pygame.draw.rect(self.motor.pantalla, COLOR_GIRASOL_ACENTO, rect_item, 3, border_radius=15)
         
-        self.motor.pantalla.blit(self.motor.fuente_grande.render("Oferta del Día", True, COLOR_GIRASOL_ACENTO), (440, 140))
-        self.motor.pantalla.blit(self.motor.fuente.render(f"[{self.motor.objeto_tienda.nombre}]", True, COLOR_BLANCO), (440, 200))
-        self.motor.pantalla.blit(self.motor.fuente.render(f"Mejora: +{self.motor.objeto_tienda.aumento_ataque} ATK | +{self.motor.objeto_tienda.aumento_defensa} DEF", True, (100, 200, 255)), (440, 240))
-        self.motor.pantalla.blit(self.motor.fuente.render(f"Precio: {self.motor.objeto_tienda.precio_compra} Oro", True, (255, 100, 100)), (440, 280))
+        self.motor.pantalla.blit(self.motor.fuente_grande.render("Ofertas del Día", True, COLOR_GIRASOL_ACENTO), (440, 140))
+        # Mostrar el Arma Principal
+        self.motor.pantalla.blit(self.motor.fuente.render(f"[ B ] Arma: {self.motor.objeto_tienda.nombre} ({self.motor.objeto_tienda.precio_compra} Oro)", True, COLOR_BLANCO), (440, 200))
+        # Mostrar las Pociones
+        self.motor.pantalla.blit(self.motor.fuente.render(f"[ 1 ] Poción de Vida (+50 HP) : 30 Oro", True, (255, 100, 100)), (440, 240))
+        self.motor.pantalla.blit(self.motor.fuente.render(f"[ 2 ] Poción de Maná (+50 MP) : 30 Oro", True, (100, 200, 255)), (440, 280))
 
         rect_msg = pygame.Rect(50, 380, 700, 130)
         pygame.draw.rect(self.motor.pantalla, COLOR_NEGRO_FONDO, rect_msg, border_radius=10)
         pygame.draw.rect(self.motor.pantalla, COLOR_MORADO_MERCADER, rect_msg, 3, border_radius=10)
         
         self.motor.pantalla.blit(self.motor.fuente.render(f"Mercader: \"{self.motor.mensaje_tienda}\"", True, COLOR_BLANCO), (80, 400))
-        self.motor.pantalla.blit(self.motor.fuente.render("[ B ] Comprar Oferta         [ ENTER ] Salir de la Tienda", True, COLOR_AMARILLO_MENU), (80, 460))
+        self.motor.pantalla.blit(self.motor.fuente.render("[ ENTER ] Salir de la Tienda", True, COLOR_AMARILLO_MENU), (80, 460))
