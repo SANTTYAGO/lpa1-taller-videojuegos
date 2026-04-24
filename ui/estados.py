@@ -3,10 +3,9 @@ import pygame
 import os
 from ui.constantes import *
 from ui.elementos import TextoFlotante
-from core.combate import SistemaCombate
+from core.combate import AtaqueBasico, GolpeEspecial, Curacion # <-- IMPORTAMOS LAS HABILIDADES POLIMÓRFICAS
 from models.objeto import Equipamiento
 
-# Desfase visual para que el personaje grande pise justo sobre su hitbox lógico
 OFFSET_X = (ESCALA_PERSONAJE - TAMANO_CELDA) // 2
 OFFSET_Y = ESCALA_PERSONAJE - TAMANO_CELDA
 
@@ -25,21 +24,16 @@ class EstadoMenuPrincipal(EstadoJuego):
 
     def manejar_evento(self, evento):
         if evento.type == pygame.KEYDOWN:
-            self.mensaje_error = "" # Limpiamos errores previos al presionar algo
-            
-            if evento.key == pygame.K_UP:
-                self.opcion_seleccionada = (self.opcion_seleccionada - 1) % len(self.opciones)
-            elif evento.key == pygame.K_DOWN:
-                self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.opciones)
+            self.mensaje_error = ""
+            if evento.key == pygame.K_UP: self.opcion_seleccionada = (self.opcion_seleccionada - 1) % len(self.opciones)
+            elif evento.key == pygame.K_DOWN: self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.opciones)
             elif evento.key == pygame.K_RETURN:
                 if self.opcion_seleccionada == 0:
-                    # Iniciar nueva partida (Desde 0)
                     if self.motor.usar_sonidos:
                         pygame.mixer.music.load(os.path.join("assets", "Sonidos", "game soundtrack.mp3"))
                         pygame.mixer.music.play(-1)
                     self.motor.estado_actual = self.motor.estado_exploracion
                 elif self.opcion_seleccionada == 1:
-                    # Intentar cargar
                     exito = self.motor.cargar_partida()
                     if exito:
                         if self.motor.usar_sonidos:
@@ -54,7 +48,6 @@ class EstadoMenuPrincipal(EstadoJuego):
         texto_titulo = self.motor.fuente_gigante.render("La Leyenda de los 17 Girasoles", True, COLOR_GIRASOL_ACENTO)
         self.motor.pantalla.blit(texto_titulo, (ANCHO_VENTANA // 2 - texto_titulo.get_width() // 2, ALTO_VENTANA // 4))
         
-        # Dibujamos las opciones interactivas
         for i, opcion in enumerate(self.opciones):
             color = COLOR_GIRASOL_ACENTO if i == self.opcion_seleccionada else COLOR_BLANCO
             marcador = "▶ " if i == self.opcion_seleccionada else "  "
@@ -97,13 +90,9 @@ class EstadoPausa(EstadoJuego):
     def manejar_evento(self, evento):
         if evento.type == pygame.KEYDOWN:
             self.mensaje_guardado = ""
-            
-            if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_i: 
-                self.motor.estado_actual = self.motor.estado_exploracion
-            elif evento.key == pygame.K_UP: 
-                self.opcion_seleccionada = (self.opcion_seleccionada - 1) % len(self.opciones)
-            elif evento.key == pygame.K_DOWN: 
-                self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.opciones)
+            if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_i: self.motor.estado_actual = self.motor.estado_exploracion
+            elif evento.key == pygame.K_UP: self.opcion_seleccionada = (self.opcion_seleccionada - 1) % len(self.opciones)
+            elif evento.key == pygame.K_DOWN: self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.opciones)
             elif evento.key == pygame.K_LEFT:
                 if self.opcion_seleccionada == 1: self.motor.ajustar_volumen_musica(-0.1)
                 elif self.opcion_seleccionada == 2: self.motor.ajustar_volumen_sfx(-0.1)
@@ -112,15 +101,10 @@ class EstadoPausa(EstadoJuego):
                 elif self.opcion_seleccionada == 2: self.motor.ajustar_volumen_sfx(0.1)
             elif evento.key == pygame.K_RETURN:
                 if self.opcion_seleccionada == 0:
-                    # Llamamos a nuestra nueva lógica JSON
-                    if self.motor.guardar_partida():
-                        self.mensaje_guardado = "¡Progreso Guardado Exitosamente!"
-                    else:
-                        self.mensaje_guardado = "¡Error al guardar!"
-                elif self.opcion_seleccionada == 3: 
-                    self.motor.alternar_pantalla_completa()
-                elif self.opcion_seleccionada == 4: 
-                    self.motor.estado_actual = self.motor.estado_exploracion
+                    if self.motor.guardar_partida(): self.mensaje_guardado = "¡Progreso Guardado Exitosamente!"
+                    else: self.mensaje_guardado = "¡Error al guardar!"
+                elif self.opcion_seleccionada == 3: self.motor.alternar_pantalla_completa()
+                elif self.opcion_seleccionada == 4: self.motor.estado_actual = self.motor.estado_exploracion
 
     def dibujar(self):
         self.motor.estado_exploracion.dibujar()
@@ -140,6 +124,7 @@ class EstadoPausa(EstadoJuego):
         textos_stats = [
             f"Héroe: {self.motor.heroe.nombre}",
             f"HP: {self.motor.heroe.puntos_vida} / {self.motor.heroe.puntos_vida_max}",
+            f"MP: {self.motor.heroe.puntos_magia} / {self.motor.heroe.puntos_magia_max}",
             f"ATK: {self.motor.heroe.ataque} | DEF: {self.motor.heroe.defensa}",
             f"Zonas: {self.motor.heroe.zonas_exploradas}/20"
         ]
@@ -155,7 +140,6 @@ class EstadoPausa(EstadoJuego):
         self.motor.pantalla.blit(self.motor.fuente.render(f"Otros objetos: {len(self.motor.heroe.inventario) - girasoles_encontrados}", True, COLOR_BLANCO), (420, 230))
         self.motor.pantalla.blit(self.motor.fuente.render(f"Oro (Puntos): {self.motor.heroe.puntaje}", True, (100, 255, 100)), (420, 280))
 
-        # Panel un poco más grande para que quepan las 5 opciones de configuración
         rect_config = pygame.Rect(100, 380, 600, 190)
         pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_config)
         pygame.draw.rect(self.motor.pantalla, COLOR_BLANCO, rect_config, 2)
@@ -175,7 +159,6 @@ class EstadoPausa(EstadoJuego):
             elif i == 4: texto = f"{marcador}Volver al Juego"; pos = (420, 480)
             
             self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color), pos)
-
 
 class EstadoExploracion(EstadoJuego):
     def manejar_evento(self, evento):
@@ -297,33 +280,70 @@ class EstadoExploracion(EstadoJuego):
 class EstadoCombate(EstadoJuego):
     def manejar_evento(self, evento):
         if evento.type != pygame.KEYDOWN: return
+        
         if self.motor.turno_actual == "JUGADOR":
+            habilidad_seleccionada = None
+            
+            # POLIMORFISMO EN ACCIÓN: Instanciamos diferentes objetos según la tecla
             if evento.key == pygame.K_a:
-                if self.motor.usar_sonidos: self.motor.sonido_ataque.play()
+                habilidad_seleccionada = AtaqueBasico()
                 self.motor.efecto_combate_activo = "HEROE_ATACA"
+            elif evento.key == pygame.K_s:
+                habilidad_seleccionada = GolpeEspecial()
+                self.motor.efecto_combate_activo = "HEROE_ATACA"
+            elif evento.key == pygame.K_c:
+                habilidad_seleccionada = Curacion()
+                self.motor.efecto_combate_activo = "HEROE_ATACA" # Usamos la misma animación por ahora
+                
+            if habilidad_seleccionada:
+                # Validamos si tiene MP suficiente ANTES de gastar el turno
+                if self.motor.heroe.puntos_magia < habilidad_seleccionada.costo_mp:
+                    self.motor.mensaje_combate = "¡No tienes suficiente Maná (MP) para hacer eso!"
+                    return # Cortamos aquí para que el jugador elija otra cosa
+                
+                if self.motor.usar_sonidos and evento.key != pygame.K_c: 
+                    self.motor.sonido_ataque.play()
+
                 self.motor.tiempo_inicio_efecto = pygame.time.get_ticks()
                 self.motor.indice_animacion = 0 
-                danio = SistemaCombate.calcular_dano(self.motor.heroe.ataque, self.motor.enemigo_en_zona.defensa)
-                self.motor.enemigo_en_zona.recibir_dano(danio)
-                self.motor.mensaje_combate = f"¡{self.motor.heroe.nombre} ataca! Causa {danio} de daño."
-                texto_danio = TextoFlotante(f"-{danio}", 500, 150, COLOR_BLANCO, self.motor.fuente_gigante)
-                self.motor.textos_flotantes.append(texto_danio)
-                if not self.motor.enemigo_en_zona.esta_vivo(): self.motor.turno_actual = "VICTORIA"
-                else: self.motor.turno_actual = "ENEMIGO"
+                
+                # Ejecución Polimórfica (No importa si es Ataque o Curación, todas tienen .ejecutar)
+                danio, msg = habilidad_seleccionada.ejecutar(self.motor.heroe, self.motor.enemigo_en_zona)
+                self.motor.mensaje_combate = msg
+                
+                # Feedback visual en pantalla
+                if danio > 0:
+                    texto_danio = TextoFlotante(f"-{danio}", 500, 150, COLOR_BLANCO, self.motor.fuente_gigante)
+                    self.motor.textos_flotantes.append(texto_danio)
+                elif evento.key == pygame.K_c:
+                    texto_cura = TextoFlotante("+HP", 200, 150, (100, 255, 100), self.motor.fuente_gigante)
+                    self.motor.textos_flotantes.append(texto_cura)
+
+                if not self.motor.enemigo_en_zona.esta_vivo(): 
+                    self.motor.turno_actual = "VICTORIA"
+                else: 
+                    self.motor.turno_actual = "ENEMIGO"
+                    
         elif self.motor.turno_actual == "ENEMIGO":
             if evento.key == pygame.K_SPACE:
                 self.motor.efecto_combate_activo = "ENEMIGO_ATACA"
                 self.motor.tiempo_inicio_efecto = pygame.time.get_ticks()
                 self.motor.indice_animacion = 0
-                danio = SistemaCombate.calcular_dano(self.motor.enemigo_en_zona.ataque, self.motor.heroe.defensa)
-                self.motor.heroe.recibir_dano(danio)
-                self.motor.mensaje_combate = f"¡{self.motor.enemigo_en_zona.nombre} contraataca! Causa {danio} de daño."
+                
+                # El enemigo siempre usa Ataque Básico
+                ataque_enemigo = AtaqueBasico()
+                danio, msg = ataque_enemigo.ejecutar(self.motor.enemigo_en_zona, self.motor.heroe)
+                self.motor.mensaje_combate = msg
+                
                 texto_danio = TextoFlotante(f"-{danio}", 200, 150, COLOR_ROJO_ENEMIGO, self.motor.fuente_gigante)
                 self.motor.textos_flotantes.append(texto_danio)
+                
                 if not self.motor.heroe.esta_vivo():
                     self.motor.turno_actual = "DERROTA"
                     self.motor.estado_fin.es_victoria = False
-                else: self.motor.turno_actual = "JUGADOR"
+                else: 
+                    self.motor.turno_actual = "JUGADOR"
+                    
         elif self.motor.turno_actual == "VICTORIA":
             if evento.key == pygame.K_RETURN:
                 self.motor.heroe.ganar_experiencia(100)
@@ -337,6 +357,7 @@ class EstadoCombate(EstadoJuego):
                     if self.motor.usar_sonidos:
                         pygame.mixer.music.load(os.path.join("assets", "Sonidos", "game soundtrack.mp3"))
                         pygame.mixer.music.play(-1)
+                        
         elif self.motor.turno_actual == "DERROTA":
             if evento.key == pygame.K_RETURN:
                 self.motor.textos_flotantes.clear()
@@ -373,7 +394,10 @@ class EstadoCombate(EstadoJuego):
         pygame.draw.rect(self.motor.pantalla, COLOR_AMARILLO_MENU, rect_mensaje, 3)
         self.motor.pantalla.blit(self.motor.fuente.render(self.motor.mensaje_combate, True, COLOR_BLANCO), (120, 370))
         
-        if self.motor.turno_actual == "JUGADOR": inst = "▶ Presiona 'A' para Atacar"; color_inst = COLOR_AMARILLO_MENU
+        # --- NUEVOS CONTROLES DE COMBATE ---
+        if self.motor.turno_actual == "JUGADOR": 
+            inst = "[A] Básico | [S] Feroz (-15 MP) | [C] Curar (-20 MP)"
+            color_inst = COLOR_AMARILLO_MENU
         elif self.motor.turno_actual == "ENEMIGO": inst = "▶ Presiona 'ESPACIO' para recibir ataque"; color_inst = COLOR_AMARILLO_MENU
         elif self.motor.turno_actual == "VICTORIA": inst = "▶ ¡Victoria! Presiona 'ENTER' para seguir"; color_inst = (100, 255, 100)
         elif self.motor.turno_actual == "DERROTA": inst = "▶ Has caído... Presiona 'ENTER'"; color_inst = COLOR_ROJO_ENEMIGO
@@ -382,7 +406,6 @@ class EstadoCombate(EstadoJuego):
         for texto in self.motor.textos_flotantes: texto.dibujar(self.motor.pantalla)
 
 class EstadoTienda(EstadoJuego):
-    """Interfaz gráfica rediseñada para el mercado."""
     def manejar_evento(self, evento):
         if evento.type != pygame.KEYDOWN: return
         if evento.key == pygame.K_b:

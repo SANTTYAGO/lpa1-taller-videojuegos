@@ -160,14 +160,17 @@ class MotorGrafico:
         pygame.draw.rect(self.pantalla, COLOR_GRIS_PANEL, rect_panel)
         pygame.draw.rect(self.pantalla, COLOR_BLANCO, rect_panel, 2)
         
+        # --- AÑADIMOS PUNTOS DE MAGIA (MP) EN CIAN ---
         t_hp = self.fuente.render(f"HP: {self.heroe.puntos_vida}/{self.heroe.puntos_vida_max}", True, (255, 100, 100))
-        t_inv = self.fuente.render(f"ATK: {self.heroe.ataque} | DEF: {self.heroe.defensa} | Pts: {self.heroe.puntaje}", True, COLOR_AMARILLO_MENU)
+        t_mp = self.fuente.render(f"MP: {self.heroe.puntos_magia}/{self.heroe.puntos_magia_max}", True, (100, 200, 255))
+        t_inv = self.fuente.render(f"ATK: {self.heroe.ataque} | DEF: {self.heroe.defensa} | Oro: {self.heroe.puntaje}", True, COLOR_AMARILLO_MENU)
         color_z = (100, 255, 100) if self.es_tienda else COLOR_BLANCO
         t_z = self.fuente.render(f"{self.nombre_zona_actual} ({self.indice_zona_actual+1}/20)", True, color_z)
         
         self.pantalla.blit(t_hp, (20, ALTO_VENTANA - 40))
-        self.pantalla.blit(t_inv, (180, ALTO_VENTANA - 40))
-        self.pantalla.blit(t_z, (500, ALTO_VENTANA - 40))
+        self.pantalla.blit(t_mp, (140, ALTO_VENTANA - 40))
+        self.pantalla.blit(t_inv, (280, ALTO_VENTANA - 40))
+        self.pantalla.blit(t_z, (600, ALTO_VENTANA - 40))
 
     def actualizar(self):
         self.estado_actual.actualizar()
@@ -187,9 +190,6 @@ class MotorGrafico:
     def salir(self): 
         pygame.quit()
 
-    # =========================================================
-    # LÓGICA DE PERSISTENCIA (GUARDADO Y CARGA EN JSON)
-    # =========================================================
     def guardar_partida(self):
         datos_guardado = {
             "zona_actual": self.indice_zona_actual,
@@ -197,13 +197,14 @@ class MotorGrafico:
                 "nombre": self.heroe.nombre,
                 "puntos_vida": self.heroe.puntos_vida,
                 "puntos_vida_max": getattr(self.heroe, "puntos_vida_max", 100),
+                "puntos_magia": getattr(self.heroe, "puntos_magia", 50),
+                "puntos_magia_max": getattr(self.heroe, "puntos_magia_max", 50),
                 "ataque": self.heroe.ataque,
                 "defensa": self.heroe.defensa,
                 "nivel": getattr(self.heroe, "nivel", 1),
                 "experiencia": getattr(self.heroe, "experiencia", 0),
                 "puntaje": self.heroe.puntaje,
                 "zonas_exploradas": getattr(self.heroe, "zonas_exploradas", 0),
-                # Guardamos los nombres de los objetos para reconstruirlos
                 "inventario": [{"nombre": obj.nombre} for obj in self.heroe.inventario]
             }
         }
@@ -223,10 +224,8 @@ class MotorGrafico:
             with open("savegame.json", "r") as archivo:
                 datos = json.load(archivo)
             
-            # 1. Restaurar posición en el mapa
             self.indice_zona_actual = datos["zona_actual"]
             
-            # 2. Restaurar estadísticas del héroe
             d_heroe = datos["heroe"]
             self.heroe.nombre = d_heroe["nombre"]
             self.heroe.puntos_vida = d_heroe["puntos_vida"]
@@ -234,12 +233,15 @@ class MotorGrafico:
             self.heroe.defensa = d_heroe["defensa"]
             self.heroe.puntaje = d_heroe["puntaje"]
             
+            if "puntos_magia" in d_heroe:
+                self.heroe.puntos_magia = d_heroe["puntos_magia"]
+                self.heroe.puntos_magia_max = d_heroe["puntos_magia_max"]
+            
             if hasattr(self.heroe, "puntos_vida_max"): self.heroe.puntos_vida_max = d_heroe["puntos_vida_max"]
             if hasattr(self.heroe, "nivel"): self.heroe.nivel = d_heroe["nivel"]
             if hasattr(self.heroe, "experiencia"): self.heroe.experiencia = d_heroe["experiencia"]
             if hasattr(self.heroe, "zonas_exploradas"): self.heroe.zonas_exploradas = d_heroe["zonas_exploradas"]
             
-            # 3. Restaurar inventario creando objetos Tesoro genéricos para la UI
             self.heroe.inventario = []
             for obj in d_heroe["inventario"]:
                 self.heroe.inventario.append(Tesoro(obj["nombre"], valor_monetario=0))

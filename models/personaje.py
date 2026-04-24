@@ -6,6 +6,11 @@ class Personaje:
         self.nombre = nombre
         self.puntos_vida = puntos_vida
         self.puntos_vida_max = puntos_vida # Para saber el tope al curarse o subir de nivel
+        
+        # --- NUEVO: Estadísticas de Magia (Maná) para las habilidades ---
+        self.puntos_magia = 50
+        self.puntos_magia_max = 50
+        
         self.ataque = ataque
         self.defensa = defensa
         self.nivel = 1
@@ -20,7 +25,8 @@ class Personaje:
 
     def mostrar_estadisticas(self):
         print(f"--- {self.nombre} (Nivel {self.nivel} | EXP: {self.experiencia}/100) ---")
-        print(f"HP: {self.puntos_vida}/{self.puntos_vida_max} | ATK: {self.ataque} | DEF: {self.defensa}")
+        # Actualizado para mostrar también el Maná en consola
+        print(f"HP: {self.puntos_vida}/{self.puntos_vida_max} | MP: {self.puntos_magia}/{self.puntos_magia_max} | ATK: {self.ataque} | DEF: {self.defensa}")
         if self.equipamiento_actual:
             print(f"Equipado: {self.equipamiento_actual.nombre}")
         print(f"Inventario: {len(self.inventario)} objetos")
@@ -68,6 +74,11 @@ class Personaje:
         # Mejora de atributos por nivel (R6.2)
         self.puntos_vida_max += 20
         self.puntos_vida = self.puntos_vida_max # Le curamos la vida al subir de nivel
+        
+        # --- NUEVO: El maná máximo sube y se restaura al subir de nivel ---
+        self.puntos_magia_max += 15
+        self.puntos_magia = self.puntos_magia_max
+        
         self.ataque += 5
         self.defensa += 3
         
