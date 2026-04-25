@@ -5,11 +5,14 @@ import math
 import random
 from ui.constantes import *
 from ui.elementos import TextoFlotante
-from core.combate import AtaqueBasico, GolpeEspecial, Curacion 
+from core.combate import AtaqueBasico, GolpeEspecial, Curacion, AtaqueEnemigo # Importamos AtaqueEnemigo
 from models.objeto import Equipamiento, Consumible, Tesoro 
 
 OFFSET_X = (ESCALA_PERSONAJE - TAMANO_CELDA) // 2
 OFFSET_Y = ESCALA_PERSONAJE - TAMANO_CELDA
+
+# Color para el daño por veneno
+COLOR_VENENO = (148, 0, 211)
 
 class EstadoJuego:
     def __init__(self, motor_grafico): self.motor = motor_grafico 
@@ -296,9 +299,11 @@ class EstadoExploracion(EstadoJuego):
         
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             if rectangulo_heroe.colliderect(self.motor.rectangulo_enemigo):
+                # --- NUEVO: FASE DE EVALUACIÓN ANTES DE PREGUNTAR INPUT ---
                 self.motor.estado_actual = self.motor.estado_combate 
-                self.motor.turno_actual = "JUGADOR"
+                self.motor.turno_actual = "EVALUAR_JUGADOR" # Cambiamos de "JUGADOR" directo a la fase de evaluación
                 self.motor.mensaje_combate = f"¡Emboscada! {self.motor.enemigo_en_zona.nombre} te ataca."
+                
                 if self.motor.enemigo_en_zona.x < self.motor.posicion_jugador_x:
                     self.motor.posicion_jugador_x += 40 
                 else:
@@ -309,7 +314,6 @@ class EstadoExploracion(EstadoJuego):
                     pygame.mixer.music.load(os.path.join("assets", "Sonidos", "fight soundtrack.ogg"))
                     pygame.mixer.music.play(-1)
                     
-        # --- NUEVO: RECORREMOS LA LISTA DE OBJETOS DINÁMICOS DE LA ZONA ---
         zona_actual = self.motor.mundo.zonas[self.motor.indice_zona_actual]
         objetos_a_eliminar = []
         for obj in zona_actual.objetos:
@@ -326,10 +330,8 @@ class EstadoExploracion(EstadoJuego):
                         self.motor.heroe.ganar_puntaje(obj.valor_monetario) 
                     if self.motor.usar_sonidos: self.motor.sonido_moneda.play()
                 
-                # Marcamos el objeto para borrarlo del mapa
                 objetos_a_eliminar.append(obj)
                 
-        # Limpiamos los objetos recolectados de la zona
         for obj in objetos_a_eliminar:
             zona_actual.objetos.remove(obj)
 
@@ -345,7 +347,6 @@ class EstadoExploracion(EstadoJuego):
             texto_tienda = self.motor.fuente.render("Refugio del Mercader ('T')", True, COLOR_BLANCO)
             self.motor.pantalla.blit(texto_tienda, (ANCHO_VENTANA//2 - texto_tienda.get_width()//2, 160))
             
-        # --- NUEVO: DIBUJAR LISTA DE OBJETOS ---
         for obj in self.motor.mundo.zonas[self.motor.indice_zona_actual].objetos:
             if self.motor.imagen_objeto: 
                 self.motor.pantalla.blit(self.motor.imagen_objeto, (obj.x, obj.y))
@@ -395,18 +396,21 @@ class EstadoCombate(EstadoJuego):
     def manejar_evento(self, evento):
         if evento.type != pygame.KEYDOWN: return
         
-        if self.motor.turno_actual == "JUGADOR":
+        # --- NUEVO: Control de turnos perdidos por Aturdimiento ---
+        if self.motor.turno_actual == "TURNO_PERDIDO_JUGADOR":
+            if evento.key == pygame.K_RETURN:
+                self.motor.turno_actual = "EVALUAR_ENEMIGO"
+                
+        elif self.motor.turno_actual == "TURNO_PERDIDO_ENEMIGO":
+            if evento.key == pygame.K_RETURN:
+                self.motor.turno_actual = "EVALUAR_JUGADOR"
+
+        elif self.motor.turno_actual == "JUGADOR":
             habilidad_seleccionada = None
             
-            if evento.key == pygame.K_a:
-                habilidad_seleccionada = AtaqueBasico()
-                self.motor.efecto_combate_activo = "HEROE_ATACA"
-            elif evento.key == pygame.K_s:
-                habilidad_seleccionada = GolpeEspecial()
-                self.motor.efecto_combate_activo = "HEROE_ATACA"
-            elif evento.key == pygame.K_c:
-                habilidad_seleccionada = Curacion()
-                self.motor.efecto_combate_activo = "HEROE_ATACA" 
+            if evento.key == pygame.K_a: habilidad_seleccionada = AtaqueBasico()
+            elif evento.key == pygame.K_s: habilidad_seleccionada = GolpeEspecial()
+            elif evento.key == pygame.K_c: habilidad_seleccionada = Curacion()
                 
             if habilidad_seleccionada:
                 if self.motor.heroe.puntos_magia < habilidad_seleccionada.costo_mp:
@@ -432,7 +436,7 @@ class EstadoCombate(EstadoJuego):
                 if not self.motor.enemigo_en_zona.esta_vivo(): 
                     self.motor.turno_actual = "VICTORIA"
                 else: 
-                    self.motor.turno_actual = "ENEMIGO"
+                    self.motor.turno_actual = "EVALUAR_ENEMIGO" # Pasamos a la fase de evaluación del enemigo
                     
         elif self.motor.turno_actual == "ENEMIGO":
             if evento.key == pygame.K_SPACE:
@@ -440,7 +444,8 @@ class EstadoCombate(EstadoJuego):
                 self.motor.tiempo_inicio_efecto = pygame.time.get_ticks()
                 self.motor.indice_animacion = 0
                 
-                ataque_enemigo = AtaqueBasico()
+                # --- NUEVO: El enemigo ahora usa la habilidad IA ---
+                ataque_enemigo = AtaqueEnemigo()
                 danio, msg = ataque_enemigo.ejecutar(self.motor.enemigo_en_zona, self.motor.heroe)
                 self.motor.mensaje_combate = msg
                 
@@ -451,7 +456,7 @@ class EstadoCombate(EstadoJuego):
                     self.motor.turno_actual = "DERROTA"
                     self.motor.estado_fin.es_victoria = False
                 else: 
-                    self.motor.turno_actual = "JUGADOR"
+                    self.motor.turno_actual = "EVALUAR_JUGADOR" # Pasamos a tu fase de evaluación
                     
         elif self.motor.turno_actual == "VICTORIA":
             if evento.key == pygame.K_RETURN:
@@ -463,28 +468,17 @@ class EstadoCombate(EstadoJuego):
                     self.motor.estado_fin.es_victoria = True
                     self.motor.estado_actual = self.motor.estado_fin
                 else:
-                    # --- NUEVO: CREAR BOTÍN (LOOT DROP) DINÁMICAMENTE ---
                     probabilidad_loot = random.random()
                     botin = None
-                    # 75% de probabilidad de tirar algo
-                    if probabilidad_loot < 0.25:
-                        botin = Consumible("Pocion Menor de Vida", "HP", 50, 30)
-                    elif probabilidad_loot < 0.50:
-                        botin = Consumible("Pocion Menor de Mana", "MP", 50, 30)
-                    elif probabilidad_loot < 0.70:
-                        botin = Tesoro("Bolsa de Oro", valor_monetario=random.randint(20, 60))
-                    elif probabilidad_loot < 0.75:
-                        # Un drop muy raro: Armamento
-                        botin = Equipamiento("Arma de Orco Caido", 10, 2, 80, 40)
+                    if probabilidad_loot < 0.25: botin = Consumible("Pocion Menor de Vida", "HP", 50, 30)
+                    elif probabilidad_loot < 0.50: botin = Consumible("Pocion Menor de Mana", "MP", 50, 30)
+                    elif probabilidad_loot < 0.70: botin = Tesoro("Bolsa de Oro", valor_monetario=random.randint(20, 60))
+                    elif probabilidad_loot < 0.75: botin = Equipamiento("Arma de Orco Caido", 10, 2, 80, 40)
                         
                     if botin:
-                        # Colocamos el botín exactamente donde murió el orco
                         botin.x = self.motor.enemigo_en_zona.x
                         botin.y = self.motor.enemigo_en_zona.y
-                        # Lo añadimos a la lista del mapa activo
                         self.motor.mundo.zonas[self.motor.indice_zona_actual].objetos.append(botin)
-                        
-                        # Texto visual para avisar al jugador
                         aviso_botin = TextoFlotante("¡Botin Soltado!", self.motor.enemigo_en_zona.x, self.motor.enemigo_en_zona.y - 20, COLOR_AMARILLO_MENU, self.motor.fuente)
                         self.motor.textos_flotantes.append(aviso_botin)
 
@@ -502,6 +496,48 @@ class EstadoCombate(EstadoJuego):
         for texto in self.motor.textos_flotantes[:]:
             texto.actualizar()
             if texto.opacidad <= 0: self.motor.textos_flotantes.remove(texto)
+
+        # =======================================================
+        # NUEVO: LÓGICA AUTOMÁTICA DE EVALUACIÓN DE ESTADOS
+        # =======================================================
+        if self.motor.turno_actual == "EVALUAR_JUGADOR":
+            aturdido, mensajes, dano_veneno = self.motor.heroe.procesar_estados()
+            
+            if dano_veneno > 0:
+                texto_veneno = TextoFlotante(f"-{dano_veneno}", 200, 150, COLOR_VENENO, self.motor.fuente_gigante)
+                self.motor.textos_flotantes.append(texto_veneno)
+                
+            if mensajes:
+                self.motor.mensaje_combate = " | ".join(mensajes)
+                
+            if not self.motor.heroe.esta_vivo():
+                self.motor.turno_actual = "DERROTA"
+                self.motor.estado_fin.es_victoria = False
+            elif aturdido:
+                self.motor.turno_actual = "TURNO_PERDIDO_JUGADOR"
+            else:
+                if not mensajes:
+                    self.motor.mensaje_combate = "¡Es tu turno! ¿Qué vas a hacer?"
+                self.motor.turno_actual = "JUGADOR"
+                
+        elif self.motor.turno_actual == "EVALUAR_ENEMIGO":
+            aturdido, mensajes, dano_veneno = self.motor.enemigo_en_zona.procesar_estados()
+            
+            if dano_veneno > 0:
+                texto_veneno = TextoFlotante(f"-{dano_veneno}", 500, 150, COLOR_VENENO, self.motor.fuente_gigante)
+                self.motor.textos_flotantes.append(texto_veneno)
+                
+            if mensajes:
+                self.motor.mensaje_combate = "Enemigo: " + " | ".join(mensajes)
+                
+            if not self.motor.enemigo_en_zona.esta_vivo():
+                self.motor.turno_actual = "VICTORIA"
+            elif aturdido:
+                self.motor.turno_actual = "TURNO_PERDIDO_ENEMIGO"
+            else:
+                if not mensajes:
+                    self.motor.mensaje_combate = f"¡{self.motor.enemigo_en_zona.nombre} se prepara para atacar!"
+                self.motor.turno_actual = "ENEMIGO"
 
     def dibujar(self):
         self.motor.pantalla.fill(COLOR_NEGRO_FONDO)
@@ -524,19 +560,34 @@ class EstadoCombate(EstadoJuego):
             enemigo_g = pygame.transform.scale(img_enemigo, (250, 250))
             self.motor.pantalla.blit(pygame.transform.flip(enemigo_g, True, False), (450, 100))
             
+            # --- Indicadores visuales de Veneno y Aturdimiento bajo los personajes ---
+            def obtener_texto_estados(entidad):
+                estados_activos = [k.capitalize() for k, v in entidad.estados.items() if v > 0]
+                return ", ".join(estados_activos)
+            
+            txt_est_h = obtener_texto_estados(self.motor.heroe)
+            if txt_est_h: self.motor.pantalla.blit(self.motor.fuente.render(txt_est_h, True, COLOR_VENENO), (180, 320))
+            
+            txt_est_e = obtener_texto_estados(self.motor.enemigo_en_zona)
+            if txt_est_e: self.motor.pantalla.blit(self.motor.fuente.render(txt_est_e, True, COLOR_VENENO), (530, 320))
+
         rect_mensaje = pygame.Rect(100, 350, 600, 150)
         pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_mensaje)
         pygame.draw.rect(self.motor.pantalla, COLOR_AMARILLO_MENU, rect_mensaje, 3)
         self.motor.pantalla.blit(self.motor.fuente.render(self.motor.mensaje_combate, True, COLOR_BLANCO), (120, 370))
         
+        # --- Instrucciones actualizadas para la Máquina de Estados ---
         if self.motor.turno_actual == "JUGADOR": 
             inst = "[A] Basico | [S] Feroz (-15 MP) | [C] Curar (-20 MP)"
             color_inst = COLOR_AMARILLO_MENU
         elif self.motor.turno_actual == "ENEMIGO": inst = "▶ Presiona 'ESPACIO' para recibir ataque"; color_inst = COLOR_AMARILLO_MENU
+        elif self.motor.turno_actual == "TURNO_PERDIDO_JUGADOR": inst = "▶ Estas aturdido. Presiona 'ENTER' para pasar turno"; color_inst = COLOR_VENENO
+        elif self.motor.turno_actual == "TURNO_PERDIDO_ENEMIGO": inst = "▶ Enemigo aturdido. Presiona 'ENTER' para pasar turno"; color_inst = (100, 255, 100)
         elif self.motor.turno_actual == "VICTORIA": inst = "▶ ¡Victoria! Presiona 'ENTER' para seguir"; color_inst = (100, 255, 100)
         elif self.motor.turno_actual == "DERROTA": inst = "▶ Has caido... Presiona 'ENTER'"; color_inst = COLOR_ROJO_ENEMIGO
+        else: inst = ""; color_inst = COLOR_BLANCO
             
-        self.motor.pantalla.blit(self.motor.fuente.render(inst, True, color_inst), (120, 450))
+        if inst: self.motor.pantalla.blit(self.motor.fuente.render(inst, True, color_inst), (120, 450))
         for texto in self.motor.textos_flotantes: texto.dibujar(self.motor.pantalla)
 
 class EstadoTienda(EstadoJuego):

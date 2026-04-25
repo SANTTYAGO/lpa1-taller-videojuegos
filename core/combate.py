@@ -17,7 +17,6 @@ class AtaqueBasico(HabilidadCombate):
         super().__init__("Ataque Básico", costo_mp=0)
 
     def ejecutar(self, atacante, defensor):
-        # Pequeña variación aleatoria para no hacer el mismo daño siempre
         variacion = random.randint(-2, 2)
         dano = max(1, atacante.ataque - defensor.defensa + variacion)
         defensor.recibir_dano(dano)
@@ -25,17 +24,24 @@ class AtaqueBasico(HabilidadCombate):
 
 
 class GolpeEspecial(HabilidadCombate):
-    """Ataque poderoso. Consume MP, escala al 180% e ignora mitad de armadura."""
+    """Ataque poderoso. Consume MP y puede causar ATURDIMIENTO."""
     def __init__(self):
         super().__init__("Golpe Feroz", costo_mp=15)
 
     def ejecutar(self, atacante, defensor):
         atacante.puntos_magia -= self.costo_mp
         dano_base = atacante.ataque * 1.8
-        # Ignora el 60% de la defensa enemiga
         dano = max(5, int(dano_base - (defensor.defensa * 0.4))) 
         defensor.recibir_dano(dano)
-        return dano, f"¡{atacante.nombre} usa {self.nombre}! CRÍTICO de {dano} pts."
+        
+        msg = f"¡{atacante.nombre} usa {self.nombre}! Causa {dano} pts."
+        
+        # --- NUEVO: 30% de probabilidad de aplicar estado Aturdido ---
+        if random.random() < 0.30:
+            defensor.aplicar_estado("aturdido", 1) # Dura 1 turno
+            msg += " ¡El enemigo quedó ATURDIDO!"
+            
+        return dano, msg
 
 
 class Curacion(HabilidadCombate):
@@ -45,7 +51,26 @@ class Curacion(HabilidadCombate):
 
     def ejecutar(self, atacante, defensor):
         atacante.puntos_magia -= self.costo_mp
-        cura = 30 + (atacante.nivel * 10) # Cura más mientras más nivel tengas
+        cura = 30 + (atacante.nivel * 10)
         atacante.puntos_vida = min(atacante.puntos_vida_max, atacante.puntos_vida + cura)
-        # Retorna daño 0 porque es curación
         return 0, f"¡{atacante.nombre} usa {self.nombre}! Recupera {cura} HP."
+
+
+class AtaqueEnemigo(HabilidadCombate):
+    """Ataque que usa la IA, tiene probabilidad de causar VENENO."""
+    def __init__(self):
+        super().__init__("Ataque Tóxico", costo_mp=0)
+
+    def ejecutar(self, atacante, defensor):
+        variacion = random.randint(-2, 2)
+        dano = max(1, atacante.ataque - defensor.defensa + variacion)
+        defensor.recibir_dano(dano)
+        
+        msg = f"¡{atacante.nombre} ataca! Causa {dano} pts."
+        
+        # --- NUEVO: 25% de probabilidad de envenenarte ---
+        if random.random() < 0.25:
+            defensor.aplicar_estado("veneno", 3) # Dura 3 turnos
+            msg += " ¡Te ha ENVENENADO!"
+            
+        return dano, msg
