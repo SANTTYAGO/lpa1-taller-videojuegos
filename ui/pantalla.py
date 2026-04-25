@@ -4,8 +4,9 @@ import os
 import random
 import json
 from ui.constantes import *
+# Importamos el nuevo EstadoInventario
 from ui.estados import (EstadoMenuPrincipal, EstadoExploracion, EstadoCombate, 
-                        EstadoTienda, EstadoFinJuego, EstadoPausa)
+                        EstadoTienda, EstadoFinJuego, EstadoPausa, EstadoInventario)
 from models.personaje import Personaje
 from core.escenario import Escenario
 from models.objeto import Equipamiento, Tesoro
@@ -20,7 +21,6 @@ class MotorGrafico:
         self.volumen_sfx = 0.5
         
         self.pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA), pygame.SCALED)
-        # Aplicamos el título centralizado
         pygame.display.set_caption(TITULO_JUEGO)
         self.reloj = pygame.time.Clock()
         self.corriendo = True
@@ -29,9 +29,6 @@ class MotorGrafico:
         self.mundo = mundo
         self.indice_zona_actual = 0 
         
-        # --- NUEVAS FUENTES ESTILO VIDEOJUEGO ---
-        # Al poner 'None', Pygame usa su fuente pixelada por defecto
-        # Aumentamos un poco los tamaños porque esta fuente es más pequeña que Arial
         self.fuente = pygame.font.Font(None, 26)
         self.fuente_grande = pygame.font.Font(None, 45)
         self.fuente_gigante = pygame.font.Font(None, 65)
@@ -42,6 +39,7 @@ class MotorGrafico:
         self.estado_tienda = EstadoTienda(self)
         self.estado_fin = EstadoFinJuego(self)
         self.estado_pausa = EstadoPausa(self)
+        self.estado_inventario = EstadoInventario(self) # <-- Instanciamos el nuevo menú
         
         self.estado_actual = self.estado_menu 
         
@@ -173,7 +171,8 @@ class MotorGrafico:
             self.estado_actual.manejar_evento(evento)
 
     def dibujar_hud_inferior(self):
-        if self.estado_actual in [self.estado_menu, self.estado_fin, self.estado_pausa]: 
+        # Ocultamos el HUD inferior en todas estas pantallas
+        if self.estado_actual in [self.estado_menu, self.estado_fin, self.estado_pausa, self.estado_inventario]: 
             return
             
         rect_panel = pygame.Rect(0, ALTO_VENTANA - 60, ANCHO_VENTANA, 60)
@@ -188,7 +187,7 @@ class MotorGrafico:
         
         self.pantalla.blit(t_hp, (20, ALTO_VENTANA - 40))
         self.pantalla.blit(t_mp, (140, ALTO_VENTANA - 40))
-        self.pantalla.blit(t_inv, (320, ALTO_VENTANA - 40))
+        self.pantalla.blit(t_inv, (280, ALTO_VENTANA - 40))
         self.pantalla.blit(t_z, (600, ALTO_VENTANA - 40))
 
     def actualizar(self):

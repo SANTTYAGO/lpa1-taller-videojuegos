@@ -46,7 +46,6 @@ class EstadoMenuPrincipal(EstadoJuego):
 
     def dibujar(self):
         self.motor.pantalla.fill(COLOR_NEGRO_FONDO)
-        # Aplicamos la constante del título
         texto_titulo = self.motor.fuente_gigante.render(TITULO_JUEGO, True, COLOR_GIRASOL_ACENTO)
         self.motor.pantalla.blit(texto_titulo, (ANCHO_VENTANA // 2 - texto_titulo.get_width() // 2, ALTO_VENTANA // 4))
         
@@ -82,44 +81,93 @@ class EstadoFinJuego(EstadoJuego):
         self.motor.pantalla.blit(texto_secundario, (ANCHO_VENTANA // 2 - texto_secundario.get_width() // 2, ALTO_VENTANA // 2))
         self.motor.pantalla.blit(texto_salir, (ANCHO_VENTANA // 2 - texto_salir.get_width() // 2, ALTO_VENTANA - 100))
 
+# =======================================================
+# NUEVO: MENÚ EXCLUSIVO DE PAUSA Y SISTEMA ('ESC')
+# =======================================================
 class EstadoPausa(EstadoJuego):
     def __init__(self, motor_grafico):
         super().__init__(motor_grafico)
-        self.opciones = ["Guardar Partida", "Música", "Efectos (SFX)", "Pantalla Completa", "Volver al Juego"]
+        # Menú centralizado con la nueva opción de salir del juego
+        self.opciones = ["Guardar Partida", "Música", "Efectos (SFX)", "Pantalla Completa", "Volver al Juego", "Salir del Juego"]
         self.opcion_seleccionada = 0
         self.mensaje_guardado = ""
-        self.modo_menu = "SISTEMA" 
-        self.cursor_inventario = 0
 
     def manejar_evento(self, evento):
         if evento.type == pygame.KEYDOWN:
             self.mensaje_guardado = ""
-            
-            if self.modo_menu == "SISTEMA":
-                if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_i: 
+            if evento.key == pygame.K_ESCAPE: 
+                self.motor.estado_actual = self.motor.estado_exploracion
+            elif evento.key == pygame.K_UP: 
+                self.opcion_seleccionada = (self.opcion_seleccionada - 1) % len(self.opciones)
+            elif evento.key == pygame.K_DOWN: 
+                self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.opciones)
+            elif evento.key == pygame.K_LEFT:
+                if self.opcion_seleccionada == 1: self.motor.ajustar_volumen_musica(-0.1)
+                elif self.opcion_seleccionada == 2: self.motor.ajustar_volumen_sfx(-0.1)
+            elif evento.key == pygame.K_RIGHT:
+                if self.opcion_seleccionada == 1: self.motor.ajustar_volumen_musica(0.1)
+                elif self.opcion_seleccionada == 2: self.motor.ajustar_volumen_sfx(0.1)
+            elif evento.key == pygame.K_RETURN:
+                if self.opcion_seleccionada == 0:
+                    if self.motor.guardar_partida(): self.mensaje_guardado = "¡Partida Guardada!"
+                    else: self.mensaje_guardado = "¡Error al guardar!"
+                elif self.opcion_seleccionada == 3: 
+                    self.motor.alternar_pantalla_completa()
+                elif self.opcion_seleccionada == 4: 
                     self.motor.estado_actual = self.motor.estado_exploracion
-                elif evento.key == pygame.K_UP: 
-                    self.opcion_seleccionada = (self.opcion_seleccionada - 1) % len(self.opciones)
-                elif evento.key == pygame.K_DOWN: 
-                    self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.opciones)
-                elif evento.key == pygame.K_LEFT:
-                    if self.opcion_seleccionada == 1: self.motor.ajustar_volumen_musica(-0.1)
-                    elif self.opcion_seleccionada == 2: self.motor.ajustar_volumen_sfx(-0.1)
-                elif evento.key == pygame.K_RIGHT:
-                    self.modo_menu = "INVENTARIO"
-                    self.cursor_inventario = 0
-                elif evento.key == pygame.K_RETURN:
-                    if self.opcion_seleccionada == 0:
-                        if self.motor.guardar_partida(): self.mensaje_guardado = "¡Progreso Guardado Exitosamente!"
-                        else: self.mensaje_guardado = "¡Error al guardar!"
-                    elif self.opcion_seleccionada == 3: self.motor.alternar_pantalla_completa()
-                    elif self.opcion_seleccionada == 4: self.motor.estado_actual = self.motor.estado_exploracion
+                elif self.opcion_seleccionada == 5:
+                    self.motor.corriendo = False # Cierra la ventana de Pygame
 
-            elif self.modo_menu == "INVENTARIO":
+    def dibujar(self):
+        self.motor.estado_exploracion.dibujar()
+        superficie_oscura = pygame.Surface((ANCHO_VENTANA, ALTO_VENTANA))
+        superficie_oscura.set_alpha(220) 
+        superficie_oscura.fill(COLOR_NEGRO_FONDO)
+        self.motor.pantalla.blit(superficie_oscura, (0, 0))
+
+        titulo = self.motor.fuente_gigante.render("Pausa - Sistema", True, COLOR_GIRASOL_ACENTO)
+        self.motor.pantalla.blit(titulo, (ANCHO_VENTANA // 2 - titulo.get_width() // 2, 80))
+
+        rect_config = pygame.Rect(200, 180, 400, 280)
+        pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_config, border_radius=15)
+        pygame.draw.rect(self.motor.pantalla, COLOR_BLANCO, rect_config, 3, border_radius=15)
+        
+        texto_cabecera = self.mensaje_guardado if self.mensaje_guardado else "Ajustes de Juego"
+        color_cabecera = (100, 255, 100) if self.mensaje_guardado else COLOR_BLANCO
+        tit_ajustes = self.motor.fuente_grande.render(texto_cabecera, True, color_cabecera)
+        self.motor.pantalla.blit(tit_ajustes, (ANCHO_VENTANA // 2 - tit_ajustes.get_width() // 2, 200))
+
+        pygame.draw.line(self.motor.pantalla, COLOR_GIRASOL_ACENTO, (220, 240), (580, 240), 2)
+
+        for i, opcion in enumerate(self.opciones):
+            color = COLOR_GIRASOL_ACENTO if i == self.opcion_seleccionada else COLOR_BLANCO
+            marcador = "▶ " if i == self.opcion_seleccionada else "  "
+            
+            if i == 0: texto = f"{marcador}Guardar Progreso"
+            elif i == 1: texto = f"{marcador}Música: {int(self.motor.volumen_musica * 100)}%"
+            elif i == 2: texto = f"{marcador}Efectos SFX: {int(self.motor.volumen_sfx * 100)}%"
+            elif i == 3: estado_pant = "Completa" if self.motor.pantalla_completa else "Ventana"; texto = f"{marcador}Pantalla: {estado_pant}"
+            elif i == 4: texto = f"{marcador}Volver al Juego"
+            elif i == 5: texto = f"{marcador}Salir del Juego"
+            
+            txt_rend = self.motor.fuente.render(texto, True, color)
+            self.motor.pantalla.blit(txt_rend, (250, 260 + (i * 30)))
+
+# =======================================================
+# NUEVO: MENÚ EXCLUSIVO DE INVENTARIO Y PERFIL ('I')
+# =======================================================
+class EstadoInventario(EstadoJuego):
+    def __init__(self, motor_grafico):
+        super().__init__(motor_grafico)
+        self.cursor_inventario = 0
+
+    def manejar_evento(self, evento):
+        if evento.type == pygame.KEYDOWN:
+            if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_i: 
+                self.motor.estado_actual = self.motor.estado_exploracion
+            else:
                 inventario_actual = self.motor.heroe.inventario
-                if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_LEFT:
-                    self.modo_menu = "SISTEMA" 
-                elif evento.key == pygame.K_UP and len(inventario_actual) > 0:
+                if evento.key == pygame.K_UP and len(inventario_actual) > 0:
                     self.cursor_inventario = (self.cursor_inventario - 1) % len(inventario_actual)
                 elif evento.key == pygame.K_DOWN and len(inventario_actual) > 0:
                     self.cursor_inventario = (self.cursor_inventario + 1) % len(inventario_actual)
@@ -135,76 +183,66 @@ class EstadoPausa(EstadoJuego):
     def dibujar(self):
         self.motor.estado_exploracion.dibujar()
         superficie_oscura = pygame.Surface((ANCHO_VENTANA, ALTO_VENTANA))
-        superficie_oscura.set_alpha(220) 
-        superficie_oscura.fill(COLOR_NEGRO_FONDO)
+        superficie_oscura.set_alpha(230) 
+        # Fondo ligeramente morado/azulado para distinguirlo del menú de pausa
+        superficie_oscura.fill((20, 20, 30)) 
         self.motor.pantalla.blit(superficie_oscura, (0, 0))
 
-        # Título del menú superior
-        titulo = self.motor.fuente_gigante.render(TITULO_JUEGO, True, COLOR_GIRASOL_ACENTO)
+        titulo = self.motor.fuente_gigante.render("Perfil e Inventario", True, COLOR_GIRASOL_ACENTO)
         self.motor.pantalla.blit(titulo, (ANCHO_VENTANA // 2 - titulo.get_width() // 2, 30))
 
-        color_borde_izq = COLOR_GIRASOL_ACENTO if self.modo_menu == "SISTEMA" else COLOR_GRIS_PANEL
-        rect_stats = pygame.Rect(50, 100, 320, 420)
+        # PANEL IZQUIERDO: Estadísticas con más espacio
+        rect_stats = pygame.Rect(50, 100, 350, 420)
         pygame.draw.rect(self.motor.pantalla, COLOR_NEGRO_FONDO, rect_stats, border_radius=10)
-        pygame.draw.rect(self.motor.pantalla, color_borde_izq, rect_stats, 3, border_radius=10)
+        pygame.draw.rect(self.motor.pantalla, COLOR_AZUL_HEROE, rect_stats, 3, border_radius=10)
         
-        self.motor.pantalla.blit(self.motor.fuente_grande.render("Estado y Sistema", True, COLOR_BLANCO), (70, 110))
+        self.motor.pantalla.blit(self.motor.fuente_grande.render("Estadísticas del Héroe", True, COLOR_BLANCO), (70, 120))
+        pygame.draw.line(self.motor.pantalla, COLOR_AZUL_HEROE, (70, 160), (380, 160), 2)
         
         textos_stats = [
-            f"Héroe: {self.motor.heroe.nombre} (Nvl {self.motor.heroe.nivel})",
-            f"HP: {self.motor.heroe.puntos_vida}/{self.motor.heroe.puntos_vida_max} | MP: {self.motor.heroe.puntos_magia}/{self.motor.heroe.puntos_magia_max}",
-            f"ATK: {self.motor.heroe.ataque} | DEF: {self.motor.heroe.defensa}",
-            f"Oro: {self.motor.heroe.puntaje} pts"
+            f"Nombre: {self.motor.heroe.nombre}",
+            f"Nivel: {self.motor.heroe.nivel}  (EXP: {self.motor.heroe.experiencia}/100)",
+            f"Vida (HP): {self.motor.heroe.puntos_vida} / {self.motor.heroe.puntos_vida_max}",
+            f"Maná (MP): {self.motor.heroe.puntos_magia} / {self.motor.heroe.puntos_magia_max}",
+            f"Ataque (ATK): {self.motor.heroe.ataque}",
+            f"Defensa (DEF): {self.motor.heroe.defensa}",
+            f"Oro acumulado: {self.motor.heroe.puntaje} pts",
+            f"Zonas Exploradas: {self.motor.heroe.zonas_exploradas}/20"
         ]
         for indice, texto in enumerate(textos_stats):
-            self.motor.pantalla.blit(self.motor.fuente.render(texto, True, COLOR_AMARILLO_MENU), (70, 160 + (indice * 30)))
+            color = (100, 255, 100) if "Oro" in texto else COLOR_AMARILLO_MENU
+            self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color), (70, 180 + (indice * 35)))
 
-        pygame.draw.line(self.motor.pantalla, COLOR_GRIS_PANEL, (70, 300), (350, 300), 2)
-        
-        texto_cabecera = self.mensaje_guardado if self.mensaje_guardado else "Ajustes (Usa ◀ y ▶)"
-        color_cabecera = (100, 255, 100) if self.mensaje_guardado else COLOR_BLANCO
-        self.motor.pantalla.blit(self.motor.fuente.render(texto_cabecera, True, color_cabecera), (70, 320))
-
-        for i, opcion in enumerate(self.opciones):
-            color = COLOR_GIRASOL_ACENTO if (i == self.opcion_seleccionada and self.modo_menu == "SISTEMA") else (150, 150, 150)
-            marcador = "▶ " if (i == self.opcion_seleccionada and self.modo_menu == "SISTEMA") else "  "
-            if i == 0: texto = f"{marcador}Guardar Progreso"
-            elif i == 1: texto = f"{marcador}Música: {int(self.motor.volumen_musica * 100)}%"
-            elif i == 2: texto = f"{marcador}Efectos: {int(self.motor.volumen_sfx * 100)}%"
-            elif i == 3: texto = f"{marcador}Pantalla Completa"
-            elif i == 4: texto = f"{marcador}Cerrar Menú"
-            self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color), (70, 350 + (i*30)))
-
-
-        color_borde_der = COLOR_GIRASOL_ACENTO if self.modo_menu == "INVENTARIO" else COLOR_GRIS_PANEL
-        rect_inv = pygame.Rect(400, 100, 350, 420)
+        # PANEL DERECHO: Mochila interactiva
+        rect_inv = pygame.Rect(420, 100, 330, 420)
         pygame.draw.rect(self.motor.pantalla, COLOR_NEGRO_FONDO, rect_inv, border_radius=10)
-        pygame.draw.rect(self.motor.pantalla, color_borde_der, rect_inv, 3, border_radius=10)
+        pygame.draw.rect(self.motor.pantalla, COLOR_GIRASOL_ACENTO, rect_inv, 3, border_radius=10)
         
-        self.motor.pantalla.blit(self.motor.fuente_grande.render("Tu Mochila", True, COLOR_BLANCO), (420, 110))
-        instruccion = "ENTER: Consumir | ◀ Volver" if self.modo_menu == "INVENTARIO" else "Presiona ▶ para gestionar"
-        self.motor.pantalla.blit(self.motor.fuente.render(instruccion, True, COLOR_AMARILLO_MENU), (420, 150))
+        self.motor.pantalla.blit(self.motor.fuente_grande.render("Tu Mochila", True, COLOR_BLANCO), (440, 120))
+        self.motor.pantalla.blit(self.motor.fuente.render("Usa ▲/▼ y ENTER para consumir", True, COLOR_AMARILLO_MENU), (440, 160))
+        pygame.draw.line(self.motor.pantalla, COLOR_GIRASOL_ACENTO, (440, 190), (730, 190), 2)
 
         inventario = self.motor.heroe.inventario
         if len(inventario) == 0:
-            self.motor.pantalla.blit(self.motor.fuente.render("(La mochila está vacía)", True, (150,150,150)), (420, 200))
+            self.motor.pantalla.blit(self.motor.fuente.render("(La mochila está vacía)", True, (150,150,150)), (440, 210))
         else:
-            max_items = min(len(inventario), 9)
+            # Paginación visual para no salirse de la caja
+            max_items = min(len(inventario), 7)
             inicio_lista = 0
-            if self.cursor_inventario >= 9:
-                inicio_lista = self.cursor_inventario - 8
+            if self.cursor_inventario >= 7:
+                inicio_lista = self.cursor_inventario - 6
                 
             for i in range(max_items):
                 idx_real = inicio_lista + i
                 item = inventario[idx_real]
                 
-                es_seleccionado = (idx_real == self.cursor_inventario and self.modo_menu == "INVENTARIO")
+                es_seleccionado = (idx_real == self.cursor_inventario)
                 color_item = COLOR_BLANCO if es_seleccionado else (150, 150, 150)
                 marcador = "▶ " if es_seleccionado else "  "
                 
                 tipo_item = "[Poción]" if isinstance(item, Consumible) else "[Objeto]"
                 texto_item = f"{marcador}{tipo_item} {item.nombre}"
-                self.motor.pantalla.blit(self.motor.fuente.render(texto_item, True, color_item), (420, 200 + (i * 25)))
+                self.motor.pantalla.blit(self.motor.fuente.render(texto_item, True, color_item), (440, 210 + (i * 30)))
 
 class EstadoExploracion(EstadoJuego):
     def manejar_evento(self, evento):
@@ -212,8 +250,11 @@ class EstadoExploracion(EstadoJuego):
             if evento.key == pygame.K_t and self.motor.es_tienda:
                 self.motor.estado_actual = self.motor.estado_tienda
                 self.motor.mensaje_tienda = "¡Bienvenido! Tengo mercancía de primera."
-            elif evento.key == pygame.K_ESCAPE or evento.key == pygame.K_i:
+            # SEPARACIÓN DE TECLAS
+            elif evento.key == pygame.K_ESCAPE:
                 self.motor.estado_actual = self.motor.estado_pausa
+            elif evento.key == pygame.K_i:
+                self.motor.estado_actual = self.motor.estado_inventario
 
     def actualizar(self):
         self._procesar_movimiento_heroe()
@@ -340,9 +381,6 @@ class EstadoExploracion(EstadoJuego):
             rect_h = pygame.Rect(self.motor.posicion_jugador_x, self.motor.posicion_jugador_y, TAMANO_CELDA, TAMANO_CELDA)
             pygame.draw.rect(self.motor.pantalla, COLOR_AZUL_HEROE, rect_h)
 
-        # -------------------------------------------------------------
-        # NIEBLA DE GUERRA: Se dibuja por encima de todo lo demás
-        # -------------------------------------------------------------
         if not self.motor.es_tienda and self.motor.usar_sprites:
             superficie_niebla = pygame.Surface((ANCHO_VENTANA, ALTO_VENTANA), pygame.SRCALPHA)
             superficie_niebla.fill((5, 5, 10, 250)) 
