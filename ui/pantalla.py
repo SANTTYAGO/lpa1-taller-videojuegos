@@ -85,7 +85,6 @@ class MotorGrafico:
     def cargar_zona(self):
         zona_actual = self.mundo.zonas[self.indice_zona_actual]
         self.enemigo_en_zona = zona_actual.enemigo
-        # ¡Hemos eliminado self.objeto_en_zona de aquí!
         self.es_tienda = zona_actual.es_tienda
         self.nombre_zona_actual = zona_actual.nombre
         
@@ -132,9 +131,24 @@ class MotorGrafico:
             try: self.imagen_objeto = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objeto", "item.png")).convert_alpha(), esc_mapa)
             except: pass
 
+            try:
+                img_t = pygame.image.load(os.path.join("assets", "Construcciones", "Tienda.png")).convert_alpha()
+                self.img_tienda = pygame.transform.scale(img_t, (TAMANO_CELDA * 2, TAMANO_CELDA * 2))
+            except: self.img_tienda = None
+
+            try:
+                img_stack = pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-stack.png")).convert_alpha()
+                # Reducimos las monedas a 32x32 píxeles para que no se vean gigantes
+                self.img_monedas_pocas = pygame.transform.scale(img_stack, (32, 32))
+                
+                img_bundle = pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-bundle.png")).convert_alpha()
+                self.img_monedas_muchas = pygame.transform.scale(img_bundle, (32, 32))
+            except: 
+                self.img_monedas_pocas = None
+                self.img_monedas_muchas = None
+
             self.imagen_luz = pygame.Surface((500, 500), pygame.SRCALPHA)
             self.imagen_luz.fill((255, 255, 255, 255)) 
-            
             for radio in range(250, 60, -4):
                 alpha = int(((radio - 60) / 190) * 255)
                 pygame.draw.circle(self.imagen_luz, (255, 255, 255, alpha), (250, 250), radio)
@@ -183,7 +197,7 @@ class MotorGrafico:
         
         self.pantalla.blit(t_hp, (20, ALTO_VENTANA - 40))
         self.pantalla.blit(t_mp, (140, ALTO_VENTANA - 40))
-        self.pantalla.blit(t_inv, (280, ALTO_VENTANA - 40))
+        self.pantalla.blit(t_inv, (320, ALTO_VENTANA - 40))
         self.pantalla.blit(t_z, (600, ALTO_VENTANA - 40))
 
     def actualizar(self):

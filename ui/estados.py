@@ -5,13 +5,12 @@ import math
 import random
 from ui.constantes import *
 from ui.elementos import TextoFlotante
-from core.combate import AtaqueBasico, GolpeEspecial, Curacion, AtaqueEnemigo # Importamos AtaqueEnemigo
+from core.combate import AtaqueBasico, GolpeEspecial, Curacion, AtaqueEnemigo
 from models.objeto import Equipamiento, Consumible, Tesoro 
 
 OFFSET_X = (ESCALA_PERSONAJE - TAMANO_CELDA) // 2
 OFFSET_Y = ESCALA_PERSONAJE - TAMANO_CELDA
 
-# Color para el daño por veneno
 COLOR_VENENO = (148, 0, 211)
 
 class EstadoJuego:
@@ -299,9 +298,8 @@ class EstadoExploracion(EstadoJuego):
         
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             if rectangulo_heroe.colliderect(self.motor.rectangulo_enemigo):
-                # --- NUEVO: FASE DE EVALUACIÓN ANTES DE PREGUNTAR INPUT ---
                 self.motor.estado_actual = self.motor.estado_combate 
-                self.motor.turno_actual = "EVALUAR_JUGADOR" # Cambiamos de "JUGADOR" directo a la fase de evaluación
+                self.motor.turno_actual = "EVALUAR_JUGADOR"
                 self.motor.mensaje_combate = f"¡Emboscada! {self.motor.enemigo_en_zona.nombre} te ataca."
                 
                 if self.motor.enemigo_en_zona.x < self.motor.posicion_jugador_x:
@@ -343,16 +341,44 @@ class EstadoExploracion(EstadoJuego):
         else: self.motor.pantalla.fill(COLOR_VERDE_PASTO)
             
         if self.motor.es_tienda:
-            pygame.draw.rect(self.motor.pantalla, COLOR_MORADO_MERCADER, self.motor.rectangulo_mercader)
+            if hasattr(self.motor, 'img_tienda') and self.motor.img_tienda:
+                pos_tienda_x = self.motor.rectangulo_mercader.x - (TAMANO_CELDA // 2)
+                pos_tienda_y = self.motor.rectangulo_mercader.y - TAMANO_CELDA
+                self.motor.pantalla.blit(self.motor.img_tienda, (pos_tienda_x, pos_tienda_y))
+            else:
+                pygame.draw.rect(self.motor.pantalla, COLOR_MORADO_MERCADER, self.motor.rectangulo_mercader)
+                
             texto_tienda = self.motor.fuente.render("Refugio del Mercader ('T')", True, COLOR_BLANCO)
-            self.motor.pantalla.blit(texto_tienda, (ANCHO_VENTANA//2 - texto_tienda.get_width()//2, 160))
+            # --- CORRECCIÓN: El texto ahora flota más arriba ---
+            self.motor.pantalla.blit(texto_tienda, (ANCHO_VENTANA//2 - texto_tienda.get_width()//2, 100))
             
         for obj in self.motor.mundo.zonas[self.motor.indice_zona_actual].objetos:
-            if self.motor.imagen_objeto: 
-                self.motor.pantalla.blit(self.motor.imagen_objeto, (obj.x, obj.y))
-            else:
-                color_obj = (139, 0, 0) if hasattr(obj, 'dano_explosion') else COLOR_NARANJA_TESORO
-                pygame.draw.rect(self.motor.pantalla, color_obj, pygame.Rect(obj.x, obj.y, TAMANO_CELDA, TAMANO_CELDA))
+            dibujado = False
+            
+            if isinstance(obj, Tesoro):
+                if obj.valor_monetario > 40 and hasattr(self.motor, 'img_monedas_muchas') and self.motor.img_monedas_muchas:
+                    # Centramos en la casilla de 64x64 sumando 16 píxeles a x e y
+                    self.motor.pantalla.blit(self.motor.img_monedas_muchas, (obj.x + 16, obj.y + 16))
+                    dibujado = True
+                elif hasattr(self.motor, 'img_monedas_pocas') and self.motor.img_monedas_pocas:
+                    self.motor.pantalla.blit(self.motor.img_monedas_pocas, (obj.x + 16, obj.y + 16))
+                    dibujado = True
+
+            if not dibujado:
+                if self.motor.imagen_objeto and not isinstance(obj, Tesoro) and not isinstance(obj, Consumible): 
+                    self.motor.pantalla.blit(self.motor.imagen_objeto, (obj.x, obj.y))
+                else:
+                    # --- CORRECCIÓN: Botellitas y Trampas en lugar de grandes cuadros ---
+                    if isinstance(obj, Consumible): 
+                        color_pocion = (0, 200, 255) if obj.tipo_restauracion == "MP" else (255, 50, 50)
+                        # Cuerpo de la botella
+                        pygame.draw.circle(self.motor.pantalla, color_pocion, (obj.x + 32, obj.y + 32), 12)
+                        # Tapón/cuello
+                        pygame.draw.rect(self.motor.pantalla, (200,200,200), pygame.Rect(obj.x + 28, obj.y + 14, 8, 8))
+                    elif hasattr(obj, 'dano_explosion'):
+                        pygame.draw.polygon(self.motor.pantalla, (139, 0, 0), [(obj.x+32, obj.y+15), (obj.x+15, obj.y+49), (obj.x+49, obj.y+49)])
+                    else:
+                        pygame.draw.rect(self.motor.pantalla, COLOR_NARANJA_TESORO, pygame.Rect(obj.x + 16, obj.y + 16, 32, 32))
                 
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             if self.motor.usar_sprites:
@@ -396,7 +422,6 @@ class EstadoCombate(EstadoJuego):
     def manejar_evento(self, evento):
         if evento.type != pygame.KEYDOWN: return
         
-        # --- NUEVO: Control de turnos perdidos por Aturdimiento ---
         if self.motor.turno_actual == "TURNO_PERDIDO_JUGADOR":
             if evento.key == pygame.K_RETURN:
                 self.motor.turno_actual = "EVALUAR_ENEMIGO"
@@ -436,7 +461,7 @@ class EstadoCombate(EstadoJuego):
                 if not self.motor.enemigo_en_zona.esta_vivo(): 
                     self.motor.turno_actual = "VICTORIA"
                 else: 
-                    self.motor.turno_actual = "EVALUAR_ENEMIGO" # Pasamos a la fase de evaluación del enemigo
+                    self.motor.turno_actual = "EVALUAR_ENEMIGO" 
                     
         elif self.motor.turno_actual == "ENEMIGO":
             if evento.key == pygame.K_SPACE:
@@ -444,7 +469,6 @@ class EstadoCombate(EstadoJuego):
                 self.motor.tiempo_inicio_efecto = pygame.time.get_ticks()
                 self.motor.indice_animacion = 0
                 
-                # --- NUEVO: El enemigo ahora usa la habilidad IA ---
                 ataque_enemigo = AtaqueEnemigo()
                 danio, msg = ataque_enemigo.ejecutar(self.motor.enemigo_en_zona, self.motor.heroe)
                 self.motor.mensaje_combate = msg
@@ -456,7 +480,7 @@ class EstadoCombate(EstadoJuego):
                     self.motor.turno_actual = "DERROTA"
                     self.motor.estado_fin.es_victoria = False
                 else: 
-                    self.motor.turno_actual = "EVALUAR_JUGADOR" # Pasamos a tu fase de evaluación
+                    self.motor.turno_actual = "EVALUAR_JUGADOR" 
                     
         elif self.motor.turno_actual == "VICTORIA":
             if evento.key == pygame.K_RETURN:
@@ -497,9 +521,6 @@ class EstadoCombate(EstadoJuego):
             texto.actualizar()
             if texto.opacidad <= 0: self.motor.textos_flotantes.remove(texto)
 
-        # =======================================================
-        # NUEVO: LÓGICA AUTOMÁTICA DE EVALUACIÓN DE ESTADOS
-        # =======================================================
         if self.motor.turno_actual == "EVALUAR_JUGADOR":
             aturdido, mensajes, dano_veneno = self.motor.heroe.procesar_estados()
             
@@ -517,7 +538,7 @@ class EstadoCombate(EstadoJuego):
                 self.motor.turno_actual = "TURNO_PERDIDO_JUGADOR"
             else:
                 if not mensajes:
-                    self.motor.mensaje_combate = "¡Es tu turno! ¿Qué vas a hacer?"
+                    self.motor.mensaje_combate = "¡Es tu turno! ¿Que vas a hacer?"
                 self.motor.turno_actual = "JUGADOR"
                 
         elif self.motor.turno_actual == "EVALUAR_ENEMIGO":
@@ -560,7 +581,6 @@ class EstadoCombate(EstadoJuego):
             enemigo_g = pygame.transform.scale(img_enemigo, (250, 250))
             self.motor.pantalla.blit(pygame.transform.flip(enemigo_g, True, False), (450, 100))
             
-            # --- Indicadores visuales de Veneno y Aturdimiento bajo los personajes ---
             def obtener_texto_estados(entidad):
                 estados_activos = [k.capitalize() for k, v in entidad.estados.items() if v > 0]
                 return ", ".join(estados_activos)
@@ -576,7 +596,6 @@ class EstadoCombate(EstadoJuego):
         pygame.draw.rect(self.motor.pantalla, COLOR_AMARILLO_MENU, rect_mensaje, 3)
         self.motor.pantalla.blit(self.motor.fuente.render(self.motor.mensaje_combate, True, COLOR_BLANCO), (120, 370))
         
-        # --- Instrucciones actualizadas para la Máquina de Estados ---
         if self.motor.turno_actual == "JUGADOR": 
             inst = "[A] Basico | [S] Feroz (-15 MP) | [C] Curar (-20 MP)"
             color_inst = COLOR_AMARILLO_MENU
