@@ -4,6 +4,9 @@ class Objeto:
     def __init__(self, nombre: str, valor_monetario: int = 0):
         self.nombre = nombre
         self.valor_monetario = valor_monetario
+        # --- NUEVO: Coordenadas dinámicas para el mapa ---
+        self.x = 0
+        self.y = 0
 
 class Tesoro(Objeto):
     def __init__(self, nombre: str, valor_monetario: int):
@@ -11,7 +14,7 @@ class Tesoro(Objeto):
 
 class Trampa(Objeto):
     def __init__(self, nombre: str, dano_explosion: int, alcance_explosion: int = 1):
-        super().__init__(nombre, 0)  # Las trampas no tienen valor monetario
+        super().__init__(nombre, 0)  
         self.dano_explosion = dano_explosion
         self.alcance_explosion = alcance_explosion
 
@@ -22,17 +25,14 @@ class Equipamiento(Objeto):
         self.aumento_defensa = aumento_defensa
         self.precio_compra = precio_compra
 
-# --- NUEVO: Herencia para objetos de un solo uso ---
 class Consumible(Objeto):
     def __init__(self, nombre: str, tipo_restauracion: str, cantidad: int, precio_compra: int = 50):
-        # Al venderlo, te dan la mitad de lo que costó
         super().__init__(nombre, precio_compra // 2)
-        self.tipo_restauracion = tipo_restauracion # Puede ser "HP" (Vida) o "MP" (Maná)
+        self.tipo_restauracion = tipo_restauracion 
         self.cantidad = cantidad
         self.precio_compra = precio_compra
 
     def usar(self, personaje):
-        """Aplica el efecto al personaje y limita el máximo usando min()"""
         if self.tipo_restauracion == "HP":
             personaje.puntos_vida = min(personaje.puntos_vida_max, personaje.puntos_vida + self.cantidad)
             print(f"💚 {personaje.nombre} se curó {self.cantidad} de Vida.")

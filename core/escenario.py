@@ -1,13 +1,14 @@
 # core/escenario.py
 import random
 from models.enemigo import Enemigo
-from models.objeto import Tesoro, Trampa, Consumible # <-- Importamos Consumible
+from models.objeto import Tesoro, Trampa, Consumible 
 
 class Zona:
-    def __init__(self, nombre, enemigo=None, objeto=None, es_tienda=False):
+    def __init__(self, nombre, enemigo=None, objetos=None, es_tienda=False):
         self.nombre = nombre
         self.enemigo = enemigo
-        self.objeto = objeto
+        # --- NUEVO: La zona ahora maneja una LISTA de objetos ---
+        self.objetos = objetos if objetos is not None else []
         self.es_tienda = es_tienda
 
 class Escenario:
@@ -19,33 +20,35 @@ class Escenario:
         for i in range(20):
             es_tienda = False
             enemigo_zona = None
-            objeto_zona = None
+            objetos_zona = [] # Lista vacía al inicio
             nombre = f"Área {i + 1}"
 
-            # Zonas de descanso/tienda
             if i in [4, 9, 14]:
                 es_tienda = True
                 nombre = "Refugio del Mercader"
-            # Zona final
             elif i == 19:
                 enemigo_zona = Enemigo("Rey Demonio", puntos_vida=150, ataque=25, defensa=10, tipo="terrestre")
                 nombre = "Guarida del Rey Demonio"
-            # Zonas normales de exploración
             else:
                 if random.random() < 0.6:
                     enemigo_zona = Enemigo("Orco", puntos_vida=40 + i*2, ataque=10 + i, defensa=5, tipo="terrestre")
                 
+                # Botín estático inicial generado al azar
                 if random.random() < 0.4:
                     rand_obj = random.random()
-                    # --- NUEVO: Distribución probabilística de loot ---
                     if rand_obj < 0.4:
-                        objeto_zona = Tesoro("Girasol Dorado", valor_monetario=50 + i*10)
+                        obj = Tesoro("Girasol Dorado", valor_monetario=50 + i*10)
                     elif rand_obj < 0.6:
-                        objeto_zona = Trampa("Espinas Ocultas", dano_explosion=15 + i*2, alcance_explosion=1)
+                        obj = Trampa("Espinas Ocultas", dano_explosion=15 + i*2, alcance_explosion=1)
                     elif rand_obj < 0.8:
-                        objeto_zona = Consumible("Poción Menor de Vida", "HP", 30)
+                        obj = Consumible("Poción Menor de Vida", "HP", 30)
                     else:
-                        objeto_zona = Consumible("Poción Menor de Maná", "MP", 30)
+                        obj = Consumible("Poción Menor de Maná", "MP", 30)
+                    
+                    # Le asignamos un lugar seguro en el mapa
+                    obj.x = random.randint(100, 600)
+                    obj.y = random.randint(100, 400)
+                    objetos_zona.append(obj)
 
-            zonas.append(Zona(nombre, enemigo_zona, objeto_zona, es_tienda))
+            zonas.append(Zona(nombre, enemigo_zona, objetos_zona, es_tienda))
         return zonas

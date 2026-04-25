@@ -2,10 +2,11 @@
 import pygame
 import os
 import math
+import random
 from ui.constantes import *
 from ui.elementos import TextoFlotante
 from core.combate import AtaqueBasico, GolpeEspecial, Curacion 
-from models.objeto import Equipamiento, Consumible 
+from models.objeto import Equipamiento, Consumible, Tesoro 
 
 OFFSET_X = (ESCALA_PERSONAJE - TAMANO_CELDA) // 2
 OFFSET_Y = ESCALA_PERSONAJE - TAMANO_CELDA
@@ -71,7 +72,7 @@ class EstadoFinJuego(EstadoJuego):
         self.motor.pantalla.fill(COLOR_NEGRO_FONDO)
         if self.es_victoria:
             texto_principal = self.motor.fuente_gigante.render("¡VICTORIA SUPREMA!", True, COLOR_GIRASOL_ACENTO)
-            texto_secundario = self.motor.fuente.render("El Rey Demonio ha caído. El mundo está a salvo.", True, COLOR_BLANCO)
+            texto_secundario = self.motor.fuente.render("El Rey Demonio ha caido. El mundo esta a salvo.", True, COLOR_BLANCO)
         else:
             texto_principal = self.motor.fuente_gigante.render("FIN DEL JUEGO", True, COLOR_ROJO_ENEMIGO)
             texto_secundario = self.motor.fuente.render("Tu viaje ha terminado en la derrota...", True, COLOR_BLANCO)
@@ -308,19 +309,29 @@ class EstadoExploracion(EstadoJuego):
                     pygame.mixer.music.load(os.path.join("assets", "Sonidos", "fight soundtrack.ogg"))
                     pygame.mixer.music.play(-1)
                     
-        if self.motor.objeto_en_zona:
-            if rectangulo_heroe.colliderect(self.motor.rectangulo_objeto):
-                if hasattr(self.motor.objeto_en_zona, 'dano_explosion'):
-                    self.motor.heroe.recibir_dano(self.motor.objeto_en_zona.dano_explosion)
+        # --- NUEVO: RECORREMOS LA LISTA DE OBJETOS DINÁMICOS DE LA ZONA ---
+        zona_actual = self.motor.mundo.zonas[self.motor.indice_zona_actual]
+        objetos_a_eliminar = []
+        for obj in zona_actual.objetos:
+            rect_obj = pygame.Rect(obj.x, obj.y, TAMANO_CELDA, TAMANO_CELDA)
+            if rectangulo_heroe.colliderect(rect_obj):
+                if hasattr(obj, 'dano_explosion'):
+                    self.motor.heroe.recibir_dano(obj.dano_explosion)
                     if not self.motor.heroe.esta_vivo():
                         self.motor.estado_fin.es_victoria = False
                         self.motor.estado_actual = self.motor.estado_fin
                 else:
-                    self.motor.heroe.recolectar_objeto(self.motor.objeto_en_zona)
-                    self.motor.heroe.ganar_puntaje(50) 
+                    self.motor.heroe.recolectar_objeto(obj)
+                    if obj.valor_monetario > 0:
+                        self.motor.heroe.ganar_puntaje(obj.valor_monetario) 
                     if self.motor.usar_sonidos: self.motor.sonido_moneda.play()
-                self.motor.mundo.zonas[self.motor.indice_zona_actual].objeto = None
-                self.motor.objeto_en_zona = None
+                
+                # Marcamos el objeto para borrarlo del mapa
+                objetos_a_eliminar.append(obj)
+                
+        # Limpiamos los objetos recolectados de la zona
+        for obj in objetos_a_eliminar:
+            zona_actual.objetos.remove(obj)
 
     def dibujar(self):
         if self.motor.usar_sprites:
@@ -334,11 +345,13 @@ class EstadoExploracion(EstadoJuego):
             texto_tienda = self.motor.fuente.render("Refugio del Mercader ('T')", True, COLOR_BLANCO)
             self.motor.pantalla.blit(texto_tienda, (ANCHO_VENTANA//2 - texto_tienda.get_width()//2, 160))
             
-        if self.motor.objeto_en_zona:
-            if self.motor.imagen_objeto: self.motor.pantalla.blit(self.motor.imagen_objeto, self.motor.rectangulo_objeto.topleft)
+        # --- NUEVO: DIBUJAR LISTA DE OBJETOS ---
+        for obj in self.motor.mundo.zonas[self.motor.indice_zona_actual].objetos:
+            if self.motor.imagen_objeto: 
+                self.motor.pantalla.blit(self.motor.imagen_objeto, (obj.x, obj.y))
             else:
-                color_obj = (139, 0, 0) if hasattr(self.motor.objeto_en_zona, 'dano_explosion') else COLOR_NARANJA_TESORO
-                pygame.draw.rect(self.motor.pantalla, color_obj, self.motor.rectangulo_objeto)
+                color_obj = (139, 0, 0) if hasattr(obj, 'dano_explosion') else COLOR_NARANJA_TESORO
+                pygame.draw.rect(self.motor.pantalla, color_obj, pygame.Rect(obj.x, obj.y, TAMANO_CELDA, TAMANO_CELDA))
                 
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             if self.motor.usar_sprites:
@@ -372,10 +385,8 @@ class EstadoExploracion(EstadoJuego):
         if not self.motor.es_tienda and self.motor.usar_sprites:
             superficie_niebla = pygame.Surface((ANCHO_VENTANA, ALTO_VENTANA), pygame.SRCALPHA)
             superficie_niebla.fill((5, 5, 10, 250)) 
-            
             centro_heroe_x = self.motor.posicion_jugador_x + (TAMANO_CELDA // 2)
             centro_heroe_y = self.motor.posicion_jugador_y + (TAMANO_CELDA // 2)
-            
             superficie_niebla.blit(self.motor.imagen_luz, (centro_heroe_x - 250, centro_heroe_y - 250), special_flags=pygame.BLEND_RGBA_MIN)
             self.motor.pantalla.blit(superficie_niebla, (0, 0))
 
@@ -447,10 +458,36 @@ class EstadoCombate(EstadoJuego):
                 self.motor.heroe.ganar_experiencia(100)
                 self.motor.efecto_combate_activo = None
                 self.motor.textos_flotantes.clear() 
+                
                 if self.motor.enemigo_en_zona.nombre == "Rey Demonio":
                     self.motor.estado_fin.es_victoria = True
                     self.motor.estado_actual = self.motor.estado_fin
                 else:
+                    # --- NUEVO: CREAR BOTÍN (LOOT DROP) DINÁMICAMENTE ---
+                    probabilidad_loot = random.random()
+                    botin = None
+                    # 75% de probabilidad de tirar algo
+                    if probabilidad_loot < 0.25:
+                        botin = Consumible("Pocion Menor de Vida", "HP", 50, 30)
+                    elif probabilidad_loot < 0.50:
+                        botin = Consumible("Pocion Menor de Mana", "MP", 50, 30)
+                    elif probabilidad_loot < 0.70:
+                        botin = Tesoro("Bolsa de Oro", valor_monetario=random.randint(20, 60))
+                    elif probabilidad_loot < 0.75:
+                        # Un drop muy raro: Armamento
+                        botin = Equipamiento("Arma de Orco Caido", 10, 2, 80, 40)
+                        
+                    if botin:
+                        # Colocamos el botín exactamente donde murió el orco
+                        botin.x = self.motor.enemigo_en_zona.x
+                        botin.y = self.motor.enemigo_en_zona.y
+                        # Lo añadimos a la lista del mapa activo
+                        self.motor.mundo.zonas[self.motor.indice_zona_actual].objetos.append(botin)
+                        
+                        # Texto visual para avisar al jugador
+                        aviso_botin = TextoFlotante("¡Botin Soltado!", self.motor.enemigo_en_zona.x, self.motor.enemigo_en_zona.y - 20, COLOR_AMARILLO_MENU, self.motor.fuente)
+                        self.motor.textos_flotantes.append(aviso_botin)
+
                     self.motor.estado_actual = self.motor.estado_exploracion
                     if self.motor.usar_sonidos:
                         pygame.mixer.music.load(os.path.join("assets", "Sonidos", "game soundtrack.mp3"))

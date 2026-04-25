@@ -4,7 +4,6 @@ import os
 import random
 import json
 from ui.constantes import *
-# Importamos el nuevo EstadoInventario
 from ui.estados import (EstadoMenuPrincipal, EstadoExploracion, EstadoCombate, 
                         EstadoTienda, EstadoFinJuego, EstadoPausa, EstadoInventario)
 from models.personaje import Personaje
@@ -39,7 +38,7 @@ class MotorGrafico:
         self.estado_tienda = EstadoTienda(self)
         self.estado_fin = EstadoFinJuego(self)
         self.estado_pausa = EstadoPausa(self)
-        self.estado_inventario = EstadoInventario(self) # <-- Instanciamos el nuevo menú
+        self.estado_inventario = EstadoInventario(self) 
         
         self.estado_actual = self.estado_menu 
         
@@ -86,7 +85,7 @@ class MotorGrafico:
     def cargar_zona(self):
         zona_actual = self.mundo.zonas[self.indice_zona_actual]
         self.enemigo_en_zona = zona_actual.enemigo
-        self.objeto_en_zona = zona_actual.objeto
+        # ¡Hemos eliminado self.objeto_en_zona de aquí!
         self.es_tienda = zona_actual.es_tienda
         self.nombre_zona_actual = zona_actual.nombre
         
@@ -96,8 +95,6 @@ class MotorGrafico:
             self.enemigo_en_zona.inicializar_posicion(start_x, start_y)
             self.rectangulo_enemigo = pygame.Rect(self.enemigo_en_zona.x, self.enemigo_en_zona.y, TAMANO_CELDA, TAMANO_CELDA)
             
-        if self.objeto_en_zona: 
-            self.rectangulo_objeto = pygame.Rect(300, 400, TAMANO_CELDA, TAMANO_CELDA)
         if self.es_tienda: 
             self.rectangulo_mercader = pygame.Rect(ANCHO_VENTANA // 2, 200, TAMANO_CELDA, TAMANO_CELDA)
 
@@ -171,7 +168,6 @@ class MotorGrafico:
             self.estado_actual.manejar_evento(evento)
 
     def dibujar_hud_inferior(self):
-        # Ocultamos el HUD inferior en todas estas pantallas
         if self.estado_actual in [self.estado_menu, self.estado_fin, self.estado_pausa, self.estado_inventario]: 
             return
             
