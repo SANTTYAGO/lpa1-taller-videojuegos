@@ -51,7 +51,7 @@ class EstadoMenuPrincipal(EstadoJuego):
         
         for i, opcion in enumerate(self.opciones):
             color = COLOR_GIRASOL_ACENTO if i == self.opcion_seleccionada else COLOR_BLANCO
-            marcador = "▶ " if i == self.opcion_seleccionada else "  "
+            marcador = "> " if i == self.opcion_seleccionada else "  "
             texto_render = self.motor.fuente_grande.render(f"{marcador}{opcion}", True, color)
             self.motor.pantalla.blit(texto_render, (ANCHO_VENTANA // 2 - 120, ALTO_VENTANA // 2 + (i * 60)))
             
@@ -81,14 +81,10 @@ class EstadoFinJuego(EstadoJuego):
         self.motor.pantalla.blit(texto_secundario, (ANCHO_VENTANA // 2 - texto_secundario.get_width() // 2, ALTO_VENTANA // 2))
         self.motor.pantalla.blit(texto_salir, (ANCHO_VENTANA // 2 - texto_salir.get_width() // 2, ALTO_VENTANA - 100))
 
-# =======================================================
-# NUEVO: MENÚ EXCLUSIVO DE PAUSA Y SISTEMA ('ESC')
-# =======================================================
 class EstadoPausa(EstadoJuego):
     def __init__(self, motor_grafico):
         super().__init__(motor_grafico)
-        # Menú centralizado con la nueva opción de salir del juego
-        self.opciones = ["Guardar Partida", "Música", "Efectos (SFX)", "Pantalla Completa", "Volver al Juego", "Salir del Juego"]
+        self.opciones = ["Guardar Partida", "Musica", "Efectos (SFX)", "Pantalla Completa", "Volver al Juego", "Salir del Juego"]
         self.opcion_seleccionada = 0
         self.mensaje_guardado = ""
 
@@ -116,7 +112,7 @@ class EstadoPausa(EstadoJuego):
                 elif self.opcion_seleccionada == 4: 
                     self.motor.estado_actual = self.motor.estado_exploracion
                 elif self.opcion_seleccionada == 5:
-                    self.motor.corriendo = False # Cierra la ventana de Pygame
+                    self.motor.corriendo = False
 
     def dibujar(self):
         self.motor.estado_exploracion.dibujar()
@@ -141,10 +137,10 @@ class EstadoPausa(EstadoJuego):
 
         for i, opcion in enumerate(self.opciones):
             color = COLOR_GIRASOL_ACENTO if i == self.opcion_seleccionada else COLOR_BLANCO
-            marcador = "▶ " if i == self.opcion_seleccionada else "  "
+            marcador = "> " if i == self.opcion_seleccionada else "  "
             
             if i == 0: texto = f"{marcador}Guardar Progreso"
-            elif i == 1: texto = f"{marcador}Música: {int(self.motor.volumen_musica * 100)}%"
+            elif i == 1: texto = f"{marcador}Musica: {int(self.motor.volumen_musica * 100)}%"
             elif i == 2: texto = f"{marcador}Efectos SFX: {int(self.motor.volumen_sfx * 100)}%"
             elif i == 3: estado_pant = "Completa" if self.motor.pantalla_completa else "Ventana"; texto = f"{marcador}Pantalla: {estado_pant}"
             elif i == 4: texto = f"{marcador}Volver al Juego"
@@ -153,9 +149,6 @@ class EstadoPausa(EstadoJuego):
             txt_rend = self.motor.fuente.render(texto, True, color)
             self.motor.pantalla.blit(txt_rend, (250, 260 + (i * 30)))
 
-# =======================================================
-# NUEVO: MENÚ EXCLUSIVO DE INVENTARIO Y PERFIL ('I')
-# =======================================================
 class EstadoInventario(EstadoJuego):
     def __init__(self, motor_grafico):
         super().__init__(motor_grafico)
@@ -184,26 +177,24 @@ class EstadoInventario(EstadoJuego):
         self.motor.estado_exploracion.dibujar()
         superficie_oscura = pygame.Surface((ANCHO_VENTANA, ALTO_VENTANA))
         superficie_oscura.set_alpha(230) 
-        # Fondo ligeramente morado/azulado para distinguirlo del menú de pausa
         superficie_oscura.fill((20, 20, 30)) 
         self.motor.pantalla.blit(superficie_oscura, (0, 0))
 
         titulo = self.motor.fuente_gigante.render("Perfil e Inventario", True, COLOR_GIRASOL_ACENTO)
         self.motor.pantalla.blit(titulo, (ANCHO_VENTANA // 2 - titulo.get_width() // 2, 30))
 
-        # PANEL IZQUIERDO: Estadísticas con más espacio
         rect_stats = pygame.Rect(50, 100, 350, 420)
         pygame.draw.rect(self.motor.pantalla, COLOR_NEGRO_FONDO, rect_stats, border_radius=10)
         pygame.draw.rect(self.motor.pantalla, COLOR_AZUL_HEROE, rect_stats, 3, border_radius=10)
         
-        self.motor.pantalla.blit(self.motor.fuente_grande.render("Estadísticas del Héroe", True, COLOR_BLANCO), (70, 120))
+        self.motor.pantalla.blit(self.motor.fuente_grande.render("Estadisticas del Heroe", True, COLOR_BLANCO), (70, 120))
         pygame.draw.line(self.motor.pantalla, COLOR_AZUL_HEROE, (70, 160), (380, 160), 2)
         
         textos_stats = [
             f"Nombre: {self.motor.heroe.nombre}",
             f"Nivel: {self.motor.heroe.nivel}  (EXP: {self.motor.heroe.experiencia}/100)",
             f"Vida (HP): {self.motor.heroe.puntos_vida} / {self.motor.heroe.puntos_vida_max}",
-            f"Maná (MP): {self.motor.heroe.puntos_magia} / {self.motor.heroe.puntos_magia_max}",
+            f"Mana (MP): {self.motor.heroe.puntos_magia} / {self.motor.heroe.puntos_magia_max}",
             f"Ataque (ATK): {self.motor.heroe.ataque}",
             f"Defensa (DEF): {self.motor.heroe.defensa}",
             f"Oro acumulado: {self.motor.heroe.puntaje} pts",
@@ -213,20 +204,18 @@ class EstadoInventario(EstadoJuego):
             color = (100, 255, 100) if "Oro" in texto else COLOR_AMARILLO_MENU
             self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color), (70, 180 + (indice * 35)))
 
-        # PANEL DERECHO: Mochila interactiva
         rect_inv = pygame.Rect(420, 100, 330, 420)
         pygame.draw.rect(self.motor.pantalla, COLOR_NEGRO_FONDO, rect_inv, border_radius=10)
         pygame.draw.rect(self.motor.pantalla, COLOR_GIRASOL_ACENTO, rect_inv, 3, border_radius=10)
         
         self.motor.pantalla.blit(self.motor.fuente_grande.render("Tu Mochila", True, COLOR_BLANCO), (440, 120))
-        self.motor.pantalla.blit(self.motor.fuente.render("Usa ▲/▼ y ENTER para consumir", True, COLOR_AMARILLO_MENU), (440, 160))
+        self.motor.pantalla.blit(self.motor.fuente.render("Usa Flechas y ENTER", True, COLOR_AMARILLO_MENU), (440, 160))
         pygame.draw.line(self.motor.pantalla, COLOR_GIRASOL_ACENTO, (440, 190), (730, 190), 2)
 
         inventario = self.motor.heroe.inventario
         if len(inventario) == 0:
-            self.motor.pantalla.blit(self.motor.fuente.render("(La mochila está vacía)", True, (150,150,150)), (440, 210))
+            self.motor.pantalla.blit(self.motor.fuente.render("(La mochila esta vacia)", True, (150,150,150)), (440, 210))
         else:
-            # Paginación visual para no salirse de la caja
             max_items = min(len(inventario), 7)
             inicio_lista = 0
             if self.cursor_inventario >= 7:
@@ -238,9 +227,9 @@ class EstadoInventario(EstadoJuego):
                 
                 es_seleccionado = (idx_real == self.cursor_inventario)
                 color_item = COLOR_BLANCO if es_seleccionado else (150, 150, 150)
-                marcador = "▶ " if es_seleccionado else "  "
+                marcador = "> " if es_seleccionado else "  "
                 
-                tipo_item = "[Poción]" if isinstance(item, Consumible) else "[Objeto]"
+                tipo_item = "[Pocion]" if isinstance(item, Consumible) else "[Objeto]"
                 texto_item = f"{marcador}{tipo_item} {item.nombre}"
                 self.motor.pantalla.blit(self.motor.fuente.render(texto_item, True, color_item), (440, 210 + (i * 30)))
 
@@ -249,8 +238,7 @@ class EstadoExploracion(EstadoJuego):
         if evento.type == pygame.KEYDOWN:
             if evento.key == pygame.K_t and self.motor.es_tienda:
                 self.motor.estado_actual = self.motor.estado_tienda
-                self.motor.mensaje_tienda = "¡Bienvenido! Tengo mercancía de primera."
-            # SEPARACIÓN DE TECLAS
+                self.motor.mensaje_tienda = "¡Bienvenido! Tengo mercancia de primera."
             elif evento.key == pygame.K_ESCAPE:
                 self.motor.estado_actual = self.motor.estado_pausa
             elif evento.key == pygame.K_i:
@@ -411,7 +399,7 @@ class EstadoCombate(EstadoJuego):
                 
             if habilidad_seleccionada:
                 if self.motor.heroe.puntos_magia < habilidad_seleccionada.costo_mp:
-                    self.motor.mensaje_combate = "¡No tienes suficiente Maná (MP) para hacer eso!"
+                    self.motor.mensaje_combate = "¡No tienes suficiente Mana (MP) para hacer eso!"
                     return 
                 
                 if self.motor.usar_sonidos and evento.key != pygame.K_c: 
@@ -505,11 +493,11 @@ class EstadoCombate(EstadoJuego):
         self.motor.pantalla.blit(self.motor.fuente.render(self.motor.mensaje_combate, True, COLOR_BLANCO), (120, 370))
         
         if self.motor.turno_actual == "JUGADOR": 
-            inst = "[A] Básico | [S] Feroz (-15 MP) | [C] Curar (-20 MP)"
+            inst = "[A] Basico | [S] Feroz (-15 MP) | [C] Curar (-20 MP)"
             color_inst = COLOR_AMARILLO_MENU
         elif self.motor.turno_actual == "ENEMIGO": inst = "▶ Presiona 'ESPACIO' para recibir ataque"; color_inst = COLOR_AMARILLO_MENU
         elif self.motor.turno_actual == "VICTORIA": inst = "▶ ¡Victoria! Presiona 'ENTER' para seguir"; color_inst = (100, 255, 100)
-        elif self.motor.turno_actual == "DERROTA": inst = "▶ Has caído... Presiona 'ENTER'"; color_inst = COLOR_ROJO_ENEMIGO
+        elif self.motor.turno_actual == "DERROTA": inst = "▶ Has caido... Presiona 'ENTER'"; color_inst = COLOR_ROJO_ENEMIGO
             
         self.motor.pantalla.blit(self.motor.fuente.render(inst, True, color_inst), (120, 450))
         for texto in self.motor.textos_flotantes: texto.dibujar(self.motor.pantalla)
@@ -535,20 +523,20 @@ class EstadoTienda(EstadoJuego):
         elif evento.key == pygame.K_1:
             if self.motor.heroe.puntaje >= 30:
                 self.motor.heroe.puntaje -= 30
-                self.motor.heroe.recolectar_objeto(Consumible("Poción de Vida", "HP", 50, 30))
-                self.motor.mensaje_tienda = "¡Poción de Vida guardada en tu mochila!"
+                self.motor.heroe.recolectar_objeto(Consumible("Pocion de Vida", "HP", 50, 30))
+                self.motor.mensaje_tienda = "¡Pocion de Vida guardada en tu mochila!"
                 if self.motor.usar_sonidos: self.motor.sonido_moneda.play()
             else:
-                self.motor.mensaje_tienda = "Oro insuficiente para la poción."
+                self.motor.mensaje_tienda = "Oro insuficiente para la pocion."
                 
         elif evento.key == pygame.K_2:
             if self.motor.heroe.puntaje >= 30:
                 self.motor.heroe.puntaje -= 30
-                self.motor.heroe.recolectar_objeto(Consumible("Poción de Maná", "MP", 50, 30))
-                self.motor.mensaje_tienda = "¡Poción de Maná guardada en tu mochila!"
+                self.motor.heroe.recolectar_objeto(Consumible("Pocion de Mana", "MP", 50, 30))
+                self.motor.mensaje_tienda = "¡Pocion de Mana guardada en tu mochila!"
                 if self.motor.usar_sonidos: self.motor.sonido_moneda.play()
             else:
-                self.motor.mensaje_tienda = "Oro insuficiente para la poción."
+                self.motor.mensaje_tienda = "Oro insuficiente para la pocion."
 
         elif evento.key == pygame.K_RETURN or evento.key == pygame.K_ESCAPE: 
             self.motor.estado_actual = self.motor.estado_exploracion 
@@ -576,10 +564,10 @@ class EstadoTienda(EstadoJuego):
         pygame.draw.rect(self.motor.pantalla, (40, 20, 50), rect_item, border_radius=15) 
         pygame.draw.rect(self.motor.pantalla, COLOR_GIRASOL_ACENTO, rect_item, 3, border_radius=15)
         
-        self.motor.pantalla.blit(self.motor.fuente_grande.render("Ofertas del Día", True, COLOR_GIRASOL_ACENTO), (440, 140))
+        self.motor.pantalla.blit(self.motor.fuente_grande.render("Ofertas del Dia", True, COLOR_GIRASOL_ACENTO), (440, 140))
         self.motor.pantalla.blit(self.motor.fuente.render(f"[ B ] Arma: {self.motor.objeto_tienda.nombre} ({self.motor.objeto_tienda.precio_compra} Oro)", True, COLOR_BLANCO), (440, 200))
-        self.motor.pantalla.blit(self.motor.fuente.render(f"[ 1 ] Poción de Vida (+50 HP) : 30 Oro", True, (255, 100, 100)), (440, 240))
-        self.motor.pantalla.blit(self.motor.fuente.render(f"[ 2 ] Poción de Maná (+50 MP) : 30 Oro", True, (100, 200, 255)), (440, 280))
+        self.motor.pantalla.blit(self.motor.fuente.render(f"[ 1 ] Pocion de Vida (+50 HP) : 30 Oro", True, (255, 100, 100)), (440, 240))
+        self.motor.pantalla.blit(self.motor.fuente.render(f"[ 2 ] Pocion de Mana (+50 MP) : 30 Oro", True, (100, 200, 255)), (440, 280))
 
         rect_msg = pygame.Rect(50, 380, 700, 130)
         pygame.draw.rect(self.motor.pantalla, COLOR_NEGRO_FONDO, rect_msg, border_radius=10)
