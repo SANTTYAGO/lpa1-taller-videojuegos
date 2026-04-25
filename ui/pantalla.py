@@ -20,7 +20,8 @@ class MotorGrafico:
         self.volumen_sfx = 0.5
         
         self.pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA), pygame.SCALED)
-        pygame.display.set_caption("La Leyenda de los 17 Girasoles")
+        # Aplicamos el título centralizado
+        pygame.display.set_caption(TITULO_JUEGO)
         self.reloj = pygame.time.Clock()
         self.corriendo = True
         
@@ -28,9 +29,12 @@ class MotorGrafico:
         self.mundo = mundo
         self.indice_zona_actual = 0 
         
-        self.fuente = pygame.font.SysFont("Arial", 20, bold=True)
-        self.fuente_grande = pygame.font.SysFont("Arial", 40, bold=True)
-        self.fuente_gigante = pygame.font.SysFont("Arial", 55, bold=True)
+        # --- NUEVAS FUENTES ESTILO VIDEOJUEGO ---
+        # Al poner 'None', Pygame usa su fuente pixelada por defecto
+        # Aumentamos un poco los tamaños porque esta fuente es más pequeña que Arial
+        self.fuente = pygame.font.Font(None, 26)
+        self.fuente_grande = pygame.font.Font(None, 45)
+        self.fuente_gigante = pygame.font.Font(None, 65)
         
         self.estado_menu = EstadoMenuPrincipal(self)
         self.estado_exploracion = EstadoExploracion(self)
@@ -133,20 +137,12 @@ class MotorGrafico:
             try: self.imagen_objeto = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objeto", "item.png")).convert_alpha(), esc_mapa)
             except: pass
 
-            # =========================================================
-            # NUEVO: CREACIÓN DE LA MÁSCARA DE LUZ (FOG OF WAR)
-            # =========================================================
-            # Creamos una superficie con canal Alpha para transparencias
             self.imagen_luz = pygame.Surface((500, 500), pygame.SRCALPHA)
-            self.imagen_luz.fill((255, 255, 255, 255)) # Relleno opaco sólido
+            self.imagen_luz.fill((255, 255, 255, 255)) 
             
-            # Dibujamos un gradiente circular recortando el canal Alpha de afuera hacia adentro
             for radio in range(250, 60, -4):
-                # Matemáticas para desvanecer la luz gradualmente
                 alpha = int(((radio - 60) / 190) * 255)
                 pygame.draw.circle(self.imagen_luz, (255, 255, 255, alpha), (250, 250), radio)
-            
-            # El núcleo puro alrededor del héroe es totalmente transparente
             pygame.draw.circle(self.imagen_luz, (255, 255, 255, 0), (250, 250), 60)
 
             self.usar_sprites = True
@@ -192,7 +188,7 @@ class MotorGrafico:
         
         self.pantalla.blit(t_hp, (20, ALTO_VENTANA - 40))
         self.pantalla.blit(t_mp, (140, ALTO_VENTANA - 40))
-        self.pantalla.blit(t_inv, (280, ALTO_VENTANA - 40))
+        self.pantalla.blit(t_inv, (320, ALTO_VENTANA - 40))
         self.pantalla.blit(t_z, (600, ALTO_VENTANA - 40))
 
     def actualizar(self):

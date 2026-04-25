@@ -1,5 +1,8 @@
 # ui/constantes.py
 
+# --- CONFIGURACIÓN GLOBAL ---
+TITULO_JUEGO = "La Caída del Rey Demonio"
+
 # Configuración de Ventana
 ANCHO_VENTANA = 800
 ALTO_VENTANA = 600
@@ -7,7 +10,7 @@ FOTOGRAMAS_POR_SEGUNDO = 60
 
 # --- PROPORCIONES VISUALES ---
 TAMANO_CELDA = 64          
-ESCALA_PERSONAJE = 110     # ¡Hacemos que el Héroe y el Orco se vean mucho más grandes!
+ESCALA_PERSONAJE = 110     
 VELOCIDAD_MOVIMIENTO = 5
 
 # Paleta de colores para la Interfaz (UI/UX)

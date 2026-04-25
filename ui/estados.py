@@ -46,7 +46,8 @@ class EstadoMenuPrincipal(EstadoJuego):
 
     def dibujar(self):
         self.motor.pantalla.fill(COLOR_NEGRO_FONDO)
-        texto_titulo = self.motor.fuente_gigante.render("La Leyenda de los 17 Girasoles", True, COLOR_GIRASOL_ACENTO)
+        # Aplicamos la constante del título
+        texto_titulo = self.motor.fuente_gigante.render(TITULO_JUEGO, True, COLOR_GIRASOL_ACENTO)
         self.motor.pantalla.blit(texto_titulo, (ANCHO_VENTANA // 2 - texto_titulo.get_width() // 2, ALTO_VENTANA // 4))
         
         for i, opcion in enumerate(self.opciones):
@@ -138,7 +139,8 @@ class EstadoPausa(EstadoJuego):
         superficie_oscura.fill(COLOR_NEGRO_FONDO)
         self.motor.pantalla.blit(superficie_oscura, (0, 0))
 
-        titulo = self.motor.fuente_gigante.render("Menú de Campamento", True, COLOR_GIRASOL_ACENTO)
+        # Título del menú superior
+        titulo = self.motor.fuente_gigante.render(TITULO_JUEGO, True, COLOR_GIRASOL_ACENTO)
         self.motor.pantalla.blit(titulo, (ANCHO_VENTANA // 2 - titulo.get_width() // 2, 30))
 
         color_borde_izq = COLOR_GIRASOL_ACENTO if self.modo_menu == "SISTEMA" else COLOR_GRIS_PANEL
@@ -203,7 +205,6 @@ class EstadoPausa(EstadoJuego):
                 tipo_item = "[Poción]" if isinstance(item, Consumible) else "[Objeto]"
                 texto_item = f"{marcador}{tipo_item} {item.nombre}"
                 self.motor.pantalla.blit(self.motor.fuente.render(texto_item, True, color_item), (420, 200 + (i * 25)))
-
 
 class EstadoExploracion(EstadoJuego):
     def manejar_evento(self, evento):
@@ -293,27 +294,23 @@ class EstadoExploracion(EstadoJuego):
                 self.motor.objeto_en_zona = None
 
     def dibujar(self):
-        # 1. Capa de Fondo (Terreno)
         if self.motor.usar_sprites:
             for x in range(0, ANCHO_VENTANA, TAMANO_CELDA):
                 for y in range(0, ALTO_VENTANA - 60, TAMANO_CELDA):
                     self.motor.pantalla.blit(self.motor.imagen_suelo, (x, y))
         else: self.motor.pantalla.fill(COLOR_VERDE_PASTO)
             
-        # 2. Dibujamos la Tienda
         if self.motor.es_tienda:
             pygame.draw.rect(self.motor.pantalla, COLOR_MORADO_MERCADER, self.motor.rectangulo_mercader)
             texto_tienda = self.motor.fuente.render("Refugio del Mercader ('T')", True, COLOR_BLANCO)
             self.motor.pantalla.blit(texto_tienda, (ANCHO_VENTANA//2 - texto_tienda.get_width()//2, 160))
             
-        # 3. Dibujamos los Objetos
         if self.motor.objeto_en_zona:
             if self.motor.imagen_objeto: self.motor.pantalla.blit(self.motor.imagen_objeto, self.motor.rectangulo_objeto.topleft)
             else:
                 color_obj = (139, 0, 0) if hasattr(self.motor.objeto_en_zona, 'dano_explosion') else COLOR_NARANJA_TESORO
                 pygame.draw.rect(self.motor.pantalla, color_obj, self.motor.rectangulo_objeto)
                 
-        # 4. Dibujamos al Enemigo
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             if self.motor.usar_sprites:
                 if self.motor.enemigo_en_zona.estado_ia == "PERSIGUIENDO": anim_orco = self.motor.anim_enemigo_walk
@@ -330,7 +327,6 @@ class EstadoExploracion(EstadoJuego):
                 self.motor.pantalla.blit(imagen_orco, (pos_e_x, pos_e_y))
             else: pygame.draw.rect(self.motor.pantalla, COLOR_ROJO_ENEMIGO, self.motor.rectangulo_enemigo)
                 
-        # 5. Dibujamos al Héroe
         if self.motor.usar_sprites:
             lista_frames = self.motor.anim_heroe_walk if self.motor.accion_actual_heroe == "WALK" else self.motor.anim_heroe_idle
             indice_frame = self.motor.indice_animacion % len(lista_frames)
@@ -344,23 +340,17 @@ class EstadoExploracion(EstadoJuego):
             rect_h = pygame.Rect(self.motor.posicion_jugador_x, self.motor.posicion_jugador_y, TAMANO_CELDA, TAMANO_CELDA)
             pygame.draw.rect(self.motor.pantalla, COLOR_AZUL_HEROE, rect_h)
 
-        # =======================================================
-        # NUEVO: RENDERIZADO DE FOG OF WAR (NIEBLA DE GUERRA)
-        # =======================================================
-        # No aplicamos niebla si estamos en una tienda segura
+        # -------------------------------------------------------------
+        # NIEBLA DE GUERRA: Se dibuja por encima de todo lo demás
+        # -------------------------------------------------------------
         if not self.motor.es_tienda and self.motor.usar_sprites:
-            # Creamos la sábana oscura de la pantalla
             superficie_niebla = pygame.Surface((ANCHO_VENTANA, ALTO_VENTANA), pygame.SRCALPHA)
-            superficie_niebla.fill((5, 5, 10, 250)) # Oscuridad profunda (250/255 de Alpha)
+            superficie_niebla.fill((5, 5, 10, 250)) 
             
-            # Calculamos el centro físico de nuestro héroe
             centro_heroe_x = self.motor.posicion_jugador_x + (TAMANO_CELDA // 2)
             centro_heroe_y = self.motor.posicion_jugador_y + (TAMANO_CELDA // 2)
             
-            # BLEND_RGBA_MIN recorta la oscuridad usando la máscara de luz circular
             superficie_niebla.blit(self.motor.imagen_luz, (centro_heroe_x - 250, centro_heroe_y - 250), special_flags=pygame.BLEND_RGBA_MIN)
-            
-            # Dibujamos finalmente la capa de oscuridad y luz sobre la pantalla principal
             self.motor.pantalla.blit(superficie_niebla, (0, 0))
 
 
