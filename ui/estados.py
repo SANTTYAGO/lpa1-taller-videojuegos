@@ -6,7 +6,7 @@ import random
 from ui.constantes import *
 from ui.elementos import TextoFlotante
 from core.combate import AtaqueBasico, GolpeEspecial, Curacion, AtaqueEnemigo
-from models.objeto import Equipamiento, Consumible, Tesoro 
+from models.objeto import Equipamiento, Consumible, Tesoro, Trampa 
 
 OFFSET_X = (ESCALA_PERSONAJE - TAMANO_CELDA) // 2
 OFFSET_Y = ESCALA_PERSONAJE - TAMANO_CELDA
@@ -354,7 +354,6 @@ class EstadoExploracion(EstadoJuego):
         for obj in self.motor.mundo.zonas[self.motor.indice_zona_actual].objetos:
             dibujado = False
             
-            # Dibujado Dinámico de Tesoros (Monedas)
             if isinstance(obj, Tesoro):
                 if obj.valor_monetario > 40 and hasattr(self.motor, 'img_monedas_muchas') and self.motor.img_monedas_muchas:
                     self.motor.pantalla.blit(self.motor.img_monedas_muchas, (obj.x + 16, obj.y + 16))
@@ -362,8 +361,6 @@ class EstadoExploracion(EstadoJuego):
                 elif hasattr(self.motor, 'img_monedas_pocas') and self.motor.img_monedas_pocas:
                     self.motor.pantalla.blit(self.motor.img_monedas_pocas, (obj.x + 16, obj.y + 16))
                     dibujado = True
-                    
-            # --- NUEVO: Dibujado Dinámico de Pociones ---
             elif isinstance(obj, Consumible):
                 if obj.tipo_restauracion == "HP" and hasattr(self.motor, 'img_pocion_vida') and self.motor.img_pocion_vida:
                     self.motor.pantalla.blit(self.motor.img_pocion_vida, (obj.x + 16, obj.y + 16))
@@ -371,8 +368,16 @@ class EstadoExploracion(EstadoJuego):
                 elif obj.tipo_restauracion == "MP" and hasattr(self.motor, 'img_pocion_mana') and self.motor.img_pocion_mana:
                     self.motor.pantalla.blit(self.motor.img_pocion_mana, (obj.x + 16, obj.y + 16))
                     dibujado = True
+            # --- NUEVO: Dibujado de Trampas (Bombas) y Equipamiento (Hachas) ---
+            elif isinstance(obj, Trampa):
+                if hasattr(self.motor, 'img_trampa') and self.motor.img_trampa:
+                    self.motor.pantalla.blit(self.motor.img_trampa, (obj.x + 16, obj.y + 16))
+                    dibujado = True
+            elif isinstance(obj, Equipamiento):
+                if hasattr(self.motor, 'img_hacha') and self.motor.img_hacha:
+                    self.motor.pantalla.blit(self.motor.img_hacha, (obj.x + 16, obj.y + 16))
+                    dibujado = True
 
-            # Si algo falla (o es una trampa), dibuja por código nativo
             if not dibujado:
                 if self.motor.imagen_objeto and not isinstance(obj, Tesoro) and not isinstance(obj, Consumible): 
                     self.motor.pantalla.blit(self.motor.imagen_objeto, (obj.x, obj.y))

@@ -146,7 +146,6 @@ class MotorGrafico:
                 self.img_monedas_pocas = None
                 self.img_monedas_muchas = None
 
-            # --- NUEVO: Carga de Pociones de Vida y Maná ---
             try:
                 img_p_roja = pygame.image.load(os.path.join("assets", "Objetos", "bottle Red", "Sprites", "Big Vial - RED - 0000.png")).convert_alpha()
                 self.img_pocion_vida = pygame.transform.scale(img_p_roja, (16, 16))
@@ -157,6 +156,18 @@ class MotorGrafico:
                 print(f"No se pudieron cargar las pociones: {e}")
                 self.img_pocion_vida = None
                 self.img_pocion_mana = None
+
+            # --- NUEVO: Carga de la Bomba (Trampa) y el Hacha (Equipamiento) ---
+            try:
+                img_bomba = pygame.image.load(os.path.join("assets", "Objetos", "Small Bomb", "96x96 - SmallBombStaticFrame1.png")).convert_alpha()
+                self.img_trampa = pygame.transform.scale(img_bomba, (16, 16))
+                
+                img_hacha = pygame.image.load(os.path.join("assets", "Armas", "woodaxe.png")).convert_alpha()
+                self.img_hacha = pygame.transform.scale(img_hacha, (16, 16))
+            except Exception as e:
+                print(f"No se pudieron cargar la bomba o las armas: {e}")
+                self.img_trampa = None
+                self.img_hacha = None
 
             self.imagen_luz = pygame.Surface((500, 500), pygame.SRCALPHA)
             self.imagen_luz.fill((255, 255, 255, 255)) 
