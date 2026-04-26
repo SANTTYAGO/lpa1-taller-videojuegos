@@ -7,8 +7,6 @@ from ui.constantes import *
 from ui.elementos import TextoFlotante
 from core.combate import AtaqueBasico, GolpeEspecial, Curacion, AtaqueEnemigo
 from models.objeto import Equipamiento, Consumible, Tesoro, Trampa 
-
-# Importamos las nuevas profesiones
 from models.personaje import Caballero, Mago, Picaro
 
 OFFSET_X = (ESCALA_PERSONAJE - TAMANO_CELDA) // 2
@@ -20,7 +18,6 @@ class EstadoJuego:
     def manejar_evento(self, evento): pass
     def actualizar(self): pass
     def dibujar(self): pass
-
 
 class EstadoMenuPrincipal(EstadoJuego):
     def __init__(self, motor_grafico):
@@ -36,11 +33,8 @@ class EstadoMenuPrincipal(EstadoJuego):
             elif evento.key == pygame.K_DOWN: self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.opciones)
             elif evento.key == pygame.K_RETURN:
                 if self.opcion_seleccionada == 0:
-                    # --- NUEVO: Ir a selección de clase en lugar del mapa ---
-                    # Cargamos el nuevo estado de selección
                     self.motor.estado_seleccion_clase = EstadoSeleccionClase(self.motor)
                     self.motor.estado_actual = self.motor.estado_seleccion_clase
-                    
                 elif self.opcion_seleccionada == 1:
                     exito = self.motor.cargar_partida()
                     if exito:
@@ -67,9 +61,6 @@ class EstadoMenuPrincipal(EstadoJuego):
             self.motor.pantalla.blit(txt_err, (ANCHO_VENTANA // 2 - txt_err.get_width() // 2, ALTO_VENTANA - 80))
 
 
-# =======================================================
-# NUEVO: PANTALLA DE SELECCIÓN DE CLASE DE PERSONAJE
-# =======================================================
 class EstadoSeleccionClase(EstadoJuego):
     def __init__(self, motor_grafico):
         super().__init__(motor_grafico)
@@ -77,8 +68,8 @@ class EstadoSeleccionClase(EstadoJuego):
         self.opcion_seleccionada = 0
         self.descripciones = [
             "CABALLERO: Robusto y defensivo. Alta Vida (150), Alta Defensa (8). Ideal para resistir.",
-            "MAGO: Frágil pero letal. Baja Vida (70), Altísimo Daño (20) y Reservas de Maná (120).",
-            "PICARO: Ágil y veloz. Stats medias. 20% Probabilidad Crítico. 20% Probabilidad Esquivar."
+            "MAGO: Fragil pero letal. Baja Vida (70), Altisimo Daño (20) y Mana (120).",
+            "PICARO: Agil y veloz. Stats medias. 20% Probabilidad Critico y 20% de Esquivar."
         ]
 
     def manejar_evento(self, evento):
@@ -88,16 +79,70 @@ class EstadoSeleccionClase(EstadoJuego):
             elif evento.key == pygame.K_RIGHT:
                 self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.clases)
             elif evento.key == pygame.K_RETURN:
-                # Instanciamos el Héroe correcto usando Herencia
                 clase_elegida = self.clases[self.opcion_seleccionada]
-                nombre_base = "Santiago" # O puedes pedir que el jugador escriba su nombre
                 
-                if clase_elegida == "Caballero":
-                    self.motor.heroe = Caballero(nombre_base)
-                elif clase_elegida == "Mago":
-                    self.motor.heroe = Mago(nombre_base)
-                elif clase_elegida == "Picaro":
-                    self.motor.heroe = Picaro(nombre_base)
+                # --- NUEVO: Transición al ingreso de nombre en lugar de saltar directo al juego ---
+                self.motor.estado_ingreso_nombre = EstadoIngresoNombre(self.motor, clase_elegida)
+                self.motor.estado_actual = self.motor.estado_ingreso_nombre
+
+    def dibujar(self):
+        self.motor.pantalla.fill(COLOR_NEGRO_FONDO)
+        
+        titulo = self.motor.fuente_gigante.render("Elige tu Profesion", True, COLOR_GIRASOL_ACENTO)
+        self.motor.pantalla.blit(titulo, (ANCHO_VENTANA // 2 - titulo.get_width() // 2, 50))
+        
+        for i, clase in enumerate(self.clases):
+            es_seleccionada = (i == self.opcion_seleccionada)
+            color_borde = COLOR_GIRASOL_ACENTO if es_seleccionada else COLOR_GRIS_PANEL
+            color_fondo = (40, 40, 50) if es_seleccionada else COLOR_NEGRO_FONDO
+            
+            x_box = 100 + (i * 210)
+            rect_clase = pygame.Rect(x_box, 200, 180, 200)
+            
+            pygame.draw.rect(self.motor.pantalla, color_fondo, rect_clase, border_radius=10)
+            pygame.draw.rect(self.motor.pantalla, color_borde, rect_clase, 4, border_radius=10)
+            
+            color_txt = COLOR_BLANCO if es_seleccionada else (150, 150, 150)
+            txt_clase = self.motor.fuente_grande.render(clase, True, color_txt)
+            self.motor.pantalla.blit(txt_clase, (x_box + 90 - txt_clase.get_width()//2, 280))
+
+        rect_desc = pygame.Rect(100, 450, 600, 80)
+        pygame.draw.rect(self.motor.pantalla, (20, 20, 30), rect_desc, border_radius=5)
+        pygame.draw.rect(self.motor.pantalla, COLOR_AZUL_HEROE, rect_desc, 2, border_radius=5)
+        
+        texto_desc = self.motor.fuente.render(self.descripciones[self.opcion_seleccionada], True, COLOR_BLANCO)
+        self.motor.pantalla.blit(texto_desc, (120, 475))
+        
+        instrucciones = self.motor.fuente.render("Usa < / > para moverte | ENTER para Continuar", True, COLOR_AMARILLO_MENU)
+        self.motor.pantalla.blit(instrucciones, (ANCHO_VENTANA//2 - instrucciones.get_width()//2, 550))
+
+
+# =======================================================
+# NUEVO: PANTALLA PARA INGRESAR NOMBRE
+# =======================================================
+class EstadoIngresoNombre(EstadoJuego):
+    def __init__(self, motor_grafico, clase_elegida):
+        super().__init__(motor_grafico)
+        self.clase_elegida = clase_elegida
+        self.nombre_ingresado = ""
+        # Habilitamos la captura de texto repetitivo en Pygame
+        pygame.key.set_repeat(300, 50) 
+
+    def manejar_evento(self, evento):
+        if evento.type == pygame.KEYDOWN:
+            if evento.key == pygame.K_RETURN:
+                # Validamos que no deje el nombre vacío
+                nombre_final = self.nombre_ingresado.strip()
+                if not nombre_final:
+                    nombre_final = "Héroe Sin Nombre"
+
+                # Instanciamos el Héroe correcto usando Herencia y el nombre ingresado
+                if self.clase_elegida == "Caballero": self.motor.heroe = Caballero(nombre_final)
+                elif self.clase_elegida == "Mago": self.motor.heroe = Mago(nombre_final)
+                elif self.clase_elegida == "Picaro": self.motor.heroe = Picaro(nombre_final)
+                
+                # Desactivamos el key repeat para que el movimiento en el juego no sea loco
+                pygame.key.set_repeat(0)
                 
                 # Iniciar la música e ir al mapa
                 if self.motor.usar_sonidos:
@@ -106,40 +151,33 @@ class EstadoSeleccionClase(EstadoJuego):
                 
                 self.motor.estado_actual = self.motor.estado_exploracion
 
+            elif evento.key == pygame.K_BACKSPACE:
+                # Borra el último caracter
+                self.nombre_ingresado = self.nombre_ingresado[:-1]
+            else:
+                # Agrega cualquier caracter imprimible (límite de 12 letras para no desbordar menús)
+                if len(self.nombre_ingresado) < 12 and evento.unicode.isprintable():
+                    self.nombre_ingresado += evento.unicode
+
     def dibujar(self):
         self.motor.pantalla.fill(COLOR_NEGRO_FONDO)
         
-        titulo = self.motor.fuente_gigante.render("Elige tu Profesion", True, COLOR_GIRASOL_ACENTO)
-        self.motor.pantalla.blit(titulo, (ANCHO_VENTANA // 2 - titulo.get_width() // 2, 50))
-        
-        # Dibujar las 3 opciones en cajas
-        for i, clase in enumerate(self.clases):
-            es_seleccionada = (i == self.opcion_seleccionada)
-            color_borde = COLOR_GIRASOL_ACENTO if es_seleccionada else COLOR_GRIS_PANEL
-            color_fondo = (40, 40, 50) if es_seleccionada else COLOR_NEGRO_FONDO
-            
-            # Calculamos las posiciones horizontales para los 3 cuadros
-            x_box = 100 + (i * 210)
-            rect_clase = pygame.Rect(x_box, 200, 180, 200)
-            
-            pygame.draw.rect(self.motor.pantalla, color_fondo, rect_clase, border_radius=10)
-            pygame.draw.rect(self.motor.pantalla, color_borde, rect_clase, 4, border_radius=10)
-            
-            # Texto dentro de la caja
-            color_txt = COLOR_BLANCO if es_seleccionada else (150, 150, 150)
-            txt_clase = self.motor.fuente_grande.render(clase, True, color_txt)
-            self.motor.pantalla.blit(txt_clase, (x_box + 90 - txt_clase.get_width()//2, 280))
+        titulo = self.motor.fuente_gigante.render(f"Escribe tu Nombre, {self.clase_elegida}", True, COLOR_GIRASOL_ACENTO)
+        self.motor.pantalla.blit(titulo, (ANCHO_VENTANA // 2 - titulo.get_width() // 2, 100))
 
-        # Descripción de la clase seleccionada en la parte inferior
-        rect_desc = pygame.Rect(100, 450, 600, 80)
-        pygame.draw.rect(self.motor.pantalla, (20, 20, 30), rect_desc, border_radius=5)
-        pygame.draw.rect(self.motor.pantalla, COLOR_AZUL_HEROE, rect_desc, 2, border_radius=5)
+        # Caja de Input
+        rect_input = pygame.Rect(ANCHO_VENTANA // 2 - 200, 250, 400, 70)
+        pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_input, border_radius=10)
+        pygame.draw.rect(self.motor.pantalla, COLOR_BLANCO, rect_input, 4, border_radius=10)
+
+        # Texto ingresado con cursor parpadeante '_'
+        cursor = "_" if pygame.time.get_ticks() % 1000 < 500 else ""
+        texto_render = self.motor.fuente_gigante.render(self.nombre_ingresado + cursor, True, COLOR_BLANCO)
         
-        texto_desc = self.motor.fuente.render(self.descripciones[self.opcion_seleccionada], True, COLOR_BLANCO)
-        self.motor.pantalla.blit(texto_desc, (120, 475))
-        
-        instrucciones = self.motor.fuente.render("Usa < / > para moverte | ENTER para Confirmar", True, COLOR_AMARILLO_MENU)
-        self.motor.pantalla.blit(instrucciones, (ANCHO_VENTANA//2 - instrucciones.get_width()//2, 550))
+        self.motor.pantalla.blit(texto_render, (ANCHO_VENTANA // 2 - texto_render.get_width() // 2, 265))
+
+        instrucciones = self.motor.fuente.render("Presiona ENTER para comenzar tu Aventura", True, COLOR_AMARILLO_MENU)
+        self.motor.pantalla.blit(instrucciones, (ANCHO_VENTANA//2 - instrucciones.get_width()//2, 400))
 
 
 class EstadoFinJuego(EstadoJuego):
@@ -190,12 +228,9 @@ class EstadoPausa(EstadoJuego):
                 if self.opcion_seleccionada == 0:
                     if self.motor.guardar_partida(): self.mensaje_guardado = "¡Partida Guardada!"
                     else: self.mensaje_guardado = "¡Error al guardar!"
-                elif self.opcion_seleccionada == 3: 
-                    self.motor.alternar_pantalla_completa()
-                elif self.opcion_seleccionada == 4: 
-                    self.motor.estado_actual = self.motor.estado_exploracion
-                elif self.opcion_seleccionada == 5:
-                    self.motor.corriendo = False
+                elif self.opcion_seleccionada == 3: self.motor.alternar_pantalla_completa()
+                elif self.opcion_seleccionada == 4: self.motor.estado_actual = self.motor.estado_exploracion
+                elif self.opcion_seleccionada == 5: self.motor.corriendo = False
 
     def dibujar(self):
         self.motor.estado_exploracion.dibujar()
@@ -221,16 +256,13 @@ class EstadoPausa(EstadoJuego):
         for i, opcion in enumerate(self.opciones):
             color = COLOR_GIRASOL_ACENTO if i == self.opcion_seleccionada else COLOR_BLANCO
             marcador = "> " if i == self.opcion_seleccionada else "  "
-            
             if i == 0: texto = f"{marcador}Guardar Progreso"
             elif i == 1: texto = f"{marcador}Musica: {int(self.motor.volumen_musica * 100)}%"
             elif i == 2: texto = f"{marcador}Efectos SFX: {int(self.motor.volumen_sfx * 100)}%"
             elif i == 3: estado_pant = "Completa" if self.motor.pantalla_completa else "Ventana"; texto = f"{marcador}Pantalla: {estado_pant}"
             elif i == 4: texto = f"{marcador}Volver al Juego"
             elif i == 5: texto = f"{marcador}Salir del Juego"
-            
-            txt_rend = self.motor.fuente.render(texto, True, color)
-            self.motor.pantalla.blit(txt_rend, (250, 260 + (i * 30)))
+            self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color), (250, 260 + (i * 30)))
 
 class EstadoInventario(EstadoJuego):
     def __init__(self, motor_grafico):
@@ -279,7 +311,11 @@ class EstadoInventario(EstadoJuego):
         self.motor.pantalla.blit(self.motor.fuente_grande.render("Estadisticas", True, COLOR_BLANCO), (60, 115))
         pygame.draw.line(self.motor.pantalla, COLOR_AZUL_HEROE, (60, 150), (380, 150), 2)
         
+        # --- NUEVO: Extraemos la 'Clase' leyendo el nombre del objeto para la UI ---
+        nombre_clase = type(self.motor.heroe).__name__
+        
         textos_stats = [
+            f"{self.motor.heroe.nombre} ({nombre_clase})",
             f"Nivel: {self.motor.heroe.nivel}  (EXP: {self.motor.heroe.experiencia}/100)",
             f"Vida: {self.motor.heroe.puntos_vida}/{self.motor.heroe.puntos_vida_max} | Mana: {self.motor.heroe.puntos_magia}/{self.motor.heroe.puntos_magia_max}",
             f"Ataque: {self.motor.heroe.ataque} | Defensa: {self.motor.heroe.defensa}",
@@ -290,7 +326,6 @@ class EstadoInventario(EstadoJuego):
             self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color), (60, 160 + (indice * 30)))
 
         self.motor.pantalla.blit(self.motor.fuente_grande.render("Equipo Activo", True, COLOR_BLANCO), (60, 300))
-        
         pygame.draw.rect(self.motor.pantalla, (50, 20, 20), pygame.Rect(60, 340, 320, 45), border_radius=5)
         pygame.draw.rect(self.motor.pantalla, (255, 100, 100), pygame.Rect(60, 340, 320, 45), 2, border_radius=5)
         txt_arma = f"Arma: {self.motor.heroe.arma_equipada.nombre}" if self.motor.heroe.arma_equipada else "Arma: (Nada equipado)"
@@ -394,7 +429,7 @@ class EstadoTienda(EstadoJuego):
         color_venta = COLOR_GIRASOL_ACENTO if self.pestana == "VENDER" else (100, 100, 100)
         self.motor.pantalla.blit(self.motor.fuente_gigante.render("[ COMPRAR ]", True, color_compra), (150, 30))
         self.motor.pantalla.blit(self.motor.fuente_gigante.render("[ VENDER ]", True, color_venta), (450, 30))
-        self.motor.pantalla.blit(self.motor.fuente.render("Usa <- y -> para cambiar de pestaña", True, COLOR_BLANCO), (250, 90))
+        self.motor.pantalla.blit(self.motor.fuente.render("Usa flechas para cambiar de pestaña", True, COLOR_BLANCO), (250, 90))
 
         rect_main = pygame.Rect(50, 130, 700, 300)
         pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_main, border_radius=15)
@@ -431,7 +466,6 @@ class EstadoTienda(EstadoJuego):
         
         self.motor.pantalla.blit(self.motor.fuente.render(f"Mercader: \"{self.motor.mensaje_tienda}\"", True, COLOR_BLANCO), (70, 470))
         self.motor.pantalla.blit(self.motor.fuente.render("ENTER: Confirmar | ESC: Salir", True, COLOR_AMARILLO_MENU), (70, 510))
-
 
 class EstadoExploracion(EstadoJuego):
     def manejar_evento(self, evento):
@@ -855,13 +889,13 @@ class EstadoCombate(EstadoJuego):
             self.motor.pantalla.blit(pygame.transform.flip(enemigo_g, True, False), (450, 100))
             
             def obtener_texto_estados(entidad):
-                estados_activos = [k.capitalize() for k, v in entidad.items() if v > 0]
+                estados_activos = [k.capitalize() for k, v in entidad.estados.items() if v > 0]
                 return ", ".join(estados_activos)
             
-            txt_est_h = obtener_texto_estados(self.motor.heroe.estados)
+            txt_est_h = obtener_texto_estados(self.motor.heroe)
             if txt_est_h: self.motor.pantalla.blit(self.motor.fuente.render(txt_est_h, True, COLOR_VENENO), (180, 320))
             
-            txt_est_e = obtener_texto_estados(self.motor.enemigo_en_zona.estados)
+            txt_est_e = obtener_texto_estados(self.motor.enemigo_en_zona)
             if txt_est_e: self.motor.pantalla.blit(self.motor.fuente.render(txt_est_e, True, COLOR_VENENO), (530, 320))
 
         rect_mensaje = pygame.Rect(100, 350, 600, 150)

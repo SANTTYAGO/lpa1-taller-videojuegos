@@ -5,7 +5,8 @@ import random
 import json
 from ui.constantes import *
 from ui.estados import (EstadoMenuPrincipal, EstadoExploracion, EstadoCombate, 
-                        EstadoTienda, EstadoFinJuego, EstadoPausa, EstadoInventario)
+                        EstadoTienda, EstadoFinJuego, EstadoPausa, EstadoInventario, 
+                        EstadoSeleccionClase, EstadoIngresoNombre) # <-- NUEVO ESTADO IMPORTADO
 from models.personaje import Personaje
 from core.escenario import Escenario
 from models.objeto import Equipamiento, Tesoro, Consumible
@@ -31,7 +32,10 @@ class MotorGrafico:
         self.fuente_grande = pygame.font.Font(None, 45)
         self.fuente_gigante = pygame.font.Font(None, 65)
         
+        # --- INSTANCIACIÓN DE ESTADOS ---
         self.estado_menu = EstadoMenuPrincipal(self)
+        self.estado_seleccion_clase = None 
+        self.estado_ingreso_nombre = None # Se instancia después de elegir clase
         self.estado_exploracion = EstadoExploracion(self)
         self.estado_combate = EstadoCombate(self)
         self.estado_tienda = EstadoTienda(self)
@@ -54,7 +58,6 @@ class MotorGrafico:
         self.efecto_combate_activo = None 
         self.tiempo_inicio_efecto = 0    
         
-        # --- NUEVO: Rastreadores de Interacción ---
         self.objeto_cercano = None
         self.tienda_cercana = False
         
@@ -88,7 +91,7 @@ class MotorGrafico:
             self.enemigo_en_zona.inicializar_posicion(600, 300)
             self.rectangulo_enemigo = pygame.Rect(self.enemigo_en_zona.x, self.enemigo_en_zona.y, TAMANO_CELDA, TAMANO_CELDA)
         if self.es_tienda: 
-            self.rectangulo_mercader = pygame.Rect(ANCHO_VENTANA // 2, 200, TAMANO_CELDA, TAMANO_CELDA)
+            self.rectangulo_mercader = pygame.Rect(ANCHO_VENTANA // 2 - 32, 200, TAMANO_CELDA, TAMANO_CELDA)
 
     def _recortar_hoja_sprites(self, ruta_archivo, escala_destino):
         hoja = pygame.image.load(ruta_archivo).convert_alpha()
@@ -114,7 +117,9 @@ class MotorGrafico:
             except: self.anim_enemigo_walk = self.anim_enemigo_idle
 
             self.imagen_suelo = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Suelo", "Grass_Middle.png")).convert(), esc_mapa)
-            
+            try: self.imagen_objeto = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objeto", "item.png")).convert_alpha(), esc_mapa)
+            except: self.imagen_objeto = None
+
             try: self.img_tienda = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Construcciones", "Tienda.png")).convert_alpha(), (TAMANO_CELDA * 2, TAMANO_CELDA * 2))
             except: self.img_tienda = None
 
@@ -122,8 +127,7 @@ class MotorGrafico:
                 self.img_monedas_pocas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-stack.png")).convert_alpha(), (32, 32))
                 self.img_monedas_muchas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-bundle.png")).convert_alpha(), (32, 32))
             except: 
-                self.img_monedas_pocas = None
-                self.img_monedas_muchas = None
+                self.img_monedas_pocas = None; self.img_monedas_muchas = None
 
             try:
                 self.img_pocion_vida = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "bottle Red", "Sprites", "Big Vial - RED - 0000.png")).convert_alpha(), (32, 32))
@@ -133,20 +137,15 @@ class MotorGrafico:
 
             try:
                 self.img_trampa = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "Small Bomb", "96x96 - SmallBombStaticFrame1.png")).convert_alpha(), (32, 32))
-                self.img_hacha = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Armas", "axe1.png")).convert_alpha(), (64, 64))
+                self.img_hacha = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Armas", "axe1.png")).convert_alpha(), (32, 32))
             except:
                 self.img_trampa = None; self.img_hacha = None
 
-            # --- NUEVO: Carga de Cofres ---
             try:
-                # Intentamos cargar una imagen de cofre si existe, si no, usaremos rectángulos marrones.
-                img_cofre_c = pygame.image.load(os.path.join("assets", "Objetos", "chest_closed.png")).convert_alpha()
-                self.img_cofre_cerrado = pygame.transform.scale(img_cofre_c, (40, 40))
-                img_cofre_a = pygame.image.load(os.path.join("assets", "Objetos", "chest_open.png")).convert_alpha()
-                self.img_cofre_abierto = pygame.transform.scale(img_cofre_a, (40, 40))
+                self.img_cofre_cerrado = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "chest_closed.png")).convert_alpha(), (40, 40))
+                self.img_cofre_abierto = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "chest_open.png")).convert_alpha(), (40, 40))
             except:
-                self.img_cofre_cerrado = None
-                self.img_cofre_abierto = None
+                self.img_cofre_cerrado = None; self.img_cofre_abierto = None
 
             self.imagen_luz = pygame.Surface((500, 500), pygame.SRCALPHA)
             self.imagen_luz.fill((255, 255, 255, 255)) 
@@ -164,7 +163,6 @@ class MotorGrafico:
         try:
             self.sonido_ataque = pygame.mixer.Sound(os.path.join("assets", "Sonidos", "knifeSlice.ogg"))
             self.sonido_moneda = pygame.mixer.Sound(os.path.join("assets", "Sonidos", "handleCoins.ogg"))
-            # Sonido para cofres
             try: self.sonido_cofre = pygame.mixer.Sound(os.path.join("assets", "Sonidos", "creak1.ogg"))
             except: self.sonido_cofre = None
             
@@ -180,7 +178,7 @@ class MotorGrafico:
             self.estado_actual.manejar_evento(evento)
 
     def dibujar_hud_inferior(self):
-        if self.estado_actual in [self.estado_menu, self.estado_fin, self.estado_pausa, self.estado_inventario]: return
+        if self.estado_actual in [self.estado_menu, self.estado_fin, self.estado_pausa, self.estado_inventario, self.estado_seleccion_clase, getattr(self, 'estado_ingreso_nombre', None)]: return
         rect_panel = pygame.Rect(0, ALTO_VENTANA - 60, ANCHO_VENTANA, 60)
         pygame.draw.rect(self.pantalla, COLOR_GRIS_PANEL, rect_panel)
         pygame.draw.rect(self.pantalla, COLOR_BLANCO, rect_panel, 2)
