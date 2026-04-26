@@ -138,14 +138,25 @@ class MotorGrafico:
 
             try:
                 img_stack = pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-stack.png")).convert_alpha()
-                # Reducimos las monedas a 32x32 píxeles para que no se vean gigantes
-                self.img_monedas_pocas = pygame.transform.scale(img_stack, (32, 32))
+                self.img_monedas_pocas = pygame.transform.scale(img_stack, (16, 16))
                 
                 img_bundle = pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-bundle.png")).convert_alpha()
-                self.img_monedas_muchas = pygame.transform.scale(img_bundle, (32, 32))
+                self.img_monedas_muchas = pygame.transform.scale(img_bundle, (16, 16))
             except: 
                 self.img_monedas_pocas = None
                 self.img_monedas_muchas = None
+
+            # --- NUEVO: Carga de Pociones de Vida y Maná ---
+            try:
+                img_p_roja = pygame.image.load(os.path.join("assets", "Objetos", "bottle Red", "Sprites", "Big Vial - RED - 0000.png")).convert_alpha()
+                self.img_pocion_vida = pygame.transform.scale(img_p_roja, (16, 16))
+                
+                img_p_azul = pygame.image.load(os.path.join("assets", "Objetos", "bottle Blue", "Sprites", "Big Vial - TURQUOISE - 0000.png")).convert_alpha()
+                self.img_pocion_mana = pygame.transform.scale(img_p_azul, (16, 16))
+            except Exception as e:
+                print(f"No se pudieron cargar las pociones: {e}")
+                self.img_pocion_vida = None
+                self.img_pocion_mana = None
 
             self.imagen_luz = pygame.Surface((500, 500), pygame.SRCALPHA)
             self.imagen_luz.fill((255, 255, 255, 255)) 

@@ -349,31 +349,37 @@ class EstadoExploracion(EstadoJuego):
                 pygame.draw.rect(self.motor.pantalla, COLOR_MORADO_MERCADER, self.motor.rectangulo_mercader)
                 
             texto_tienda = self.motor.fuente.render("Refugio del Mercader ('T')", True, COLOR_BLANCO)
-            # --- CORRECCIÓN: El texto ahora flota más arriba ---
             self.motor.pantalla.blit(texto_tienda, (ANCHO_VENTANA//2 - texto_tienda.get_width()//2, 100))
             
         for obj in self.motor.mundo.zonas[self.motor.indice_zona_actual].objetos:
             dibujado = False
             
+            # Dibujado Dinámico de Tesoros (Monedas)
             if isinstance(obj, Tesoro):
                 if obj.valor_monetario > 40 and hasattr(self.motor, 'img_monedas_muchas') and self.motor.img_monedas_muchas:
-                    # Centramos en la casilla de 64x64 sumando 16 píxeles a x e y
                     self.motor.pantalla.blit(self.motor.img_monedas_muchas, (obj.x + 16, obj.y + 16))
                     dibujado = True
                 elif hasattr(self.motor, 'img_monedas_pocas') and self.motor.img_monedas_pocas:
                     self.motor.pantalla.blit(self.motor.img_monedas_pocas, (obj.x + 16, obj.y + 16))
                     dibujado = True
+                    
+            # --- NUEVO: Dibujado Dinámico de Pociones ---
+            elif isinstance(obj, Consumible):
+                if obj.tipo_restauracion == "HP" and hasattr(self.motor, 'img_pocion_vida') and self.motor.img_pocion_vida:
+                    self.motor.pantalla.blit(self.motor.img_pocion_vida, (obj.x + 16, obj.y + 16))
+                    dibujado = True
+                elif obj.tipo_restauracion == "MP" and hasattr(self.motor, 'img_pocion_mana') and self.motor.img_pocion_mana:
+                    self.motor.pantalla.blit(self.motor.img_pocion_mana, (obj.x + 16, obj.y + 16))
+                    dibujado = True
 
+            # Si algo falla (o es una trampa), dibuja por código nativo
             if not dibujado:
                 if self.motor.imagen_objeto and not isinstance(obj, Tesoro) and not isinstance(obj, Consumible): 
                     self.motor.pantalla.blit(self.motor.imagen_objeto, (obj.x, obj.y))
                 else:
-                    # --- CORRECCIÓN: Botellitas y Trampas en lugar de grandes cuadros ---
                     if isinstance(obj, Consumible): 
                         color_pocion = (0, 200, 255) if obj.tipo_restauracion == "MP" else (255, 50, 50)
-                        # Cuerpo de la botella
                         pygame.draw.circle(self.motor.pantalla, color_pocion, (obj.x + 32, obj.y + 32), 12)
-                        # Tapón/cuello
                         pygame.draw.rect(self.motor.pantalla, (200,200,200), pygame.Rect(obj.x + 28, obj.y + 14, 8, 8))
                     elif hasattr(obj, 'dano_explosion'):
                         pygame.draw.polygon(self.motor.pantalla, (139, 0, 0), [(obj.x+32, obj.y+15), (obj.x+15, obj.y+49), (obj.x+49, obj.y+49)])
