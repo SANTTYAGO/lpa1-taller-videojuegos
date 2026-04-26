@@ -8,13 +8,12 @@ from ui.estados import (EstadoMenuPrincipal, EstadoExploracion, EstadoCombate,
                         EstadoTienda, EstadoFinJuego, EstadoPausa, EstadoInventario)
 from models.personaje import Personaje
 from core.escenario import Escenario
-from models.objeto import Equipamiento, Tesoro
+from models.objeto import Equipamiento, Tesoro, Consumible
 
 class MotorGrafico:
     def __init__(self, heroe: Personaje, mundo: Escenario):
         pygame.init()
         pygame.mixer.init()
-        
         self.pantalla_completa = False
         self.volumen_musica = 0.5
         self.volumen_sfx = 0.5
@@ -41,14 +40,10 @@ class MotorGrafico:
         self.estado_inventario = EstadoInventario(self) 
         
         self.estado_actual = self.estado_menu 
-        
         self.turno_actual = "JUGADOR"
         self.mensaje_combate = "¡Un enemigo bloquea el paso!"
-        self.mensaje_tienda = "¡Bienvenido! ¿Qué vas a llevar?"
-        self.objeto_tienda = Equipamiento("Espada Maestra", 15, 5, 150, 75)
         
         self.textos_flotantes = []
-        
         self.posicion_jugador_x = 50 
         self.posicion_jugador_y = ((ALTO_VENTANA - 60) // 2) - (TAMANO_CELDA // 2)
         self.indice_animacion = 0
@@ -65,10 +60,8 @@ class MotorGrafico:
 
     def alternar_pantalla_completa(self):
         self.pantalla_completa = not self.pantalla_completa
-        if self.pantalla_completa:
-            self.pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA), pygame.FULLSCREEN | pygame.SCALED)
-        else:
-            self.pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA), pygame.SCALED)
+        if self.pantalla_completa: self.pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA), pygame.FULLSCREEN | pygame.SCALED)
+        else: self.pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA), pygame.SCALED)
 
     def ajustar_volumen_musica(self, incremento):
         self.volumen_musica = max(0.0, min(1.0, self.volumen_musica + incremento))
@@ -79,8 +72,7 @@ class MotorGrafico:
         if self.usar_sonidos:
             self.sonido_ataque.set_volume(self.volumen_sfx)
             self.sonido_moneda.set_volume(self.volumen_sfx)
-            for paso in self.sonidos_pasos:
-                paso.set_volume(self.volumen_sfx * 0.4) 
+            for paso in self.sonidos_pasos: paso.set_volume(self.volumen_sfx * 0.4) 
 
     def cargar_zona(self):
         zona_actual = self.mundo.zonas[self.indice_zona_actual]
@@ -89,11 +81,8 @@ class MotorGrafico:
         self.nombre_zona_actual = zona_actual.nombre
         
         if self.enemigo_en_zona: 
-            start_x = 600
-            start_y = 300
-            self.enemigo_en_zona.inicializar_posicion(start_x, start_y)
+            self.enemigo_en_zona.inicializar_posicion(600, 300)
             self.rectangulo_enemigo = pygame.Rect(self.enemigo_en_zona.x, self.enemigo_en_zona.y, TAMANO_CELDA, TAMANO_CELDA)
-            
         if self.es_tienda: 
             self.rectangulo_mercader = pygame.Rect(ANCHO_VENTANA // 2, 200, TAMANO_CELDA, TAMANO_CELDA)
 
@@ -104,8 +93,7 @@ class MotorGrafico:
         lista_frames = []
         for i in range(numero_columnas):
             area_recorte = pygame.Rect(i * alto_frame, 0, alto_frame, alto_frame)
-            frame_recortado = hoja.subsurface(area_recorte)
-            lista_frames.append(pygame.transform.scale(frame_recortado, escala_destino))
+            lista_frames.append(pygame.transform.scale(hoja.subsurface(area_recorte), escala_destino))
         return lista_frames
 
     def cargar_recursos_graficos(self):
@@ -114,60 +102,37 @@ class MotorGrafico:
         try:
             esc_mapa = (TAMANO_CELDA, TAMANO_CELDA) 
             esc_personaje = (ESCALA_PERSONAJE, ESCALA_PERSONAJE)
-            
             self.anim_heroe_idle = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Idle.png"), esc_personaje)
             self.anim_heroe_walk = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Walk.png"), esc_personaje)
             self.anim_heroe_attack = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Attack01.png"), esc_personaje)
-            
             self.anim_enemigo_idle = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Idle.png"), esc_personaje)
             self.anim_enemigo_attack = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Attack01.png"), esc_personaje)
-            try:
-                self.anim_enemigo_walk = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Walk.png"), esc_personaje)
-            except:
-                self.anim_enemigo_walk = self.anim_enemigo_idle
+            try: self.anim_enemigo_walk = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Walk.png"), esc_personaje)
+            except: self.anim_enemigo_walk = self.anim_enemigo_idle
 
             self.imagen_suelo = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Suelo", "Grass_Middle.png")).convert(), esc_mapa)
             
-            try: self.imagen_objeto = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objeto", "item.png")).convert_alpha(), esc_mapa)
-            except: pass
-
-            try:
-                img_t = pygame.image.load(os.path.join("assets", "Construcciones", "Tienda.png")).convert_alpha()
-                self.img_tienda = pygame.transform.scale(img_t, (TAMANO_CELDA * 2, TAMANO_CELDA * 2))
+            try: self.img_tienda = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Construcciones", "Tienda.png")).convert_alpha(), (TAMANO_CELDA * 2, TAMANO_CELDA * 2))
             except: self.img_tienda = None
 
             try:
-                img_stack = pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-stack.png")).convert_alpha()
-                self.img_monedas_pocas = pygame.transform.scale(img_stack, (16, 16))
-                
-                img_bundle = pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-bundle.png")).convert_alpha()
-                self.img_monedas_muchas = pygame.transform.scale(img_bundle, (16, 16))
+                self.img_monedas_pocas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-stack.png")).convert_alpha(), (32, 32))
+                self.img_monedas_muchas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-bundle.png")).convert_alpha(), (32, 32))
             except: 
                 self.img_monedas_pocas = None
                 self.img_monedas_muchas = None
 
             try:
-                img_p_roja = pygame.image.load(os.path.join("assets", "Objetos", "bottle Red", "Sprites", "Big Vial - RED - 0000.png")).convert_alpha()
-                self.img_pocion_vida = pygame.transform.scale(img_p_roja, (16, 16))
-                
-                img_p_azul = pygame.image.load(os.path.join("assets", "Objetos", "bottle Blue", "Sprites", "Big Vial - TURQUOISE - 0000.png")).convert_alpha()
-                self.img_pocion_mana = pygame.transform.scale(img_p_azul, (16, 16))
-            except Exception as e:
-                print(f"No se pudieron cargar las pociones: {e}")
-                self.img_pocion_vida = None
-                self.img_pocion_mana = None
+                self.img_pocion_vida = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "bottle Red", "Sprites", "Big Vial - RED - 0000.png")).convert_alpha(), (32, 32))
+                self.img_pocion_mana = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "bottle Blue", "Sprites", "Big Vial - TURQUOISE - 0000.png")).convert_alpha(), (32, 32))
+            except:
+                self.img_pocion_vida = None; self.img_pocion_mana = None
 
-            # --- NUEVO: Carga de la Bomba (Trampa) y el Hacha (Equipamiento) ---
             try:
-                img_bomba = pygame.image.load(os.path.join("assets", "Objetos", "Small Bomb", "96x96 - SmallBombStaticFrame1.png")).convert_alpha()
-                self.img_trampa = pygame.transform.scale(img_bomba, (16, 16))
-                
-                img_hacha = pygame.image.load(os.path.join("assets", "Armas", "woodaxe.png")).convert_alpha()
-                self.img_hacha = pygame.transform.scale(img_hacha, (16, 16))
-            except Exception as e:
-                print(f"No se pudieron cargar la bomba o las armas: {e}")
-                self.img_trampa = None
-                self.img_hacha = None
+                self.img_trampa = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "Small Bomb", "96x96 - SmallBombStaticFrame1.png")).convert_alpha(), (32, 32))
+                self.img_hacha = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Armas", "axe1.png")).convert_alpha(), (32, 32))
+            except:
+                self.img_trampa = None; self.img_hacha = None
 
             self.imagen_luz = pygame.Surface((500, 500), pygame.SRCALPHA)
             self.imagen_luz.fill((255, 255, 255, 255)) 
@@ -185,51 +150,35 @@ class MotorGrafico:
         try:
             self.sonido_ataque = pygame.mixer.Sound(os.path.join("assets", "Sonidos", "knifeSlice.ogg"))
             self.sonido_moneda = pygame.mixer.Sound(os.path.join("assets", "Sonidos", "handleCoins.ogg"))
-            
-            self.sonidos_pasos = []
-            for i in range(10): 
-                paso = pygame.mixer.Sound(os.path.join("assets", "Sonidos", f"footstep0{i}.ogg"))
-                self.sonidos_pasos.append(paso)
-            
+            self.sonidos_pasos = [pygame.mixer.Sound(os.path.join("assets", "Sonidos", f"footstep0{i}.ogg")) for i in range(10)]
             self.ajustar_volumen_sfx(0)
             pygame.mixer.music.set_volume(self.volumen_musica)
             self.usar_sonidos = True
-        except Exception as error: 
-            print(f"Jugando en silencio. Error: {error}")
+        except: pass
 
     def manejar_eventos(self):
         for evento in pygame.event.get():
-            if evento.type == pygame.QUIT: 
-                self.corriendo = False
+            if evento.type == pygame.QUIT: self.corriendo = False
             self.estado_actual.manejar_evento(evento)
 
     def dibujar_hud_inferior(self):
-        if self.estado_actual in [self.estado_menu, self.estado_fin, self.estado_pausa, self.estado_inventario]: 
-            return
-            
+        if self.estado_actual in [self.estado_menu, self.estado_fin, self.estado_pausa, self.estado_inventario]: return
         rect_panel = pygame.Rect(0, ALTO_VENTANA - 60, ANCHO_VENTANA, 60)
         pygame.draw.rect(self.pantalla, COLOR_GRIS_PANEL, rect_panel)
         pygame.draw.rect(self.pantalla, COLOR_BLANCO, rect_panel, 2)
         
-        t_hp = self.fuente.render(f"HP: {self.heroe.puntos_vida}/{self.heroe.puntos_vida_max}", True, (255, 100, 100))
-        t_mp = self.fuente.render(f"MP: {self.heroe.puntos_magia}/{self.heroe.puntos_magia_max}", True, (100, 200, 255))
-        t_inv = self.fuente.render(f"ATK: {self.heroe.ataque} | DEF: {self.heroe.defensa} | Oro: {self.heroe.puntaje}", True, COLOR_AMARILLO_MENU)
-        color_z = (100, 255, 100) if self.es_tienda else COLOR_BLANCO
-        t_z = self.fuente.render(f"{self.nombre_zona_actual} ({self.indice_zona_actual+1}/20)", True, color_z)
-        
-        self.pantalla.blit(t_hp, (20, ALTO_VENTANA - 40))
-        self.pantalla.blit(t_mp, (140, ALTO_VENTANA - 40))
-        self.pantalla.blit(t_inv, (320, ALTO_VENTANA - 40))
-        self.pantalla.blit(t_z, (600, ALTO_VENTANA - 40))
+        self.pantalla.blit(self.fuente.render(f"HP: {self.heroe.puntos_vida}/{self.heroe.puntos_vida_max}", True, (255, 100, 100)), (20, ALTO_VENTANA - 40))
+        self.pantalla.blit(self.fuente.render(f"MP: {self.heroe.puntos_magia}/{self.heroe.puntos_magia_max}", True, (100, 200, 255)), (140, ALTO_VENTANA - 40))
+        self.pantalla.blit(self.fuente.render(f"ATK: {self.heroe.ataque} | DEF: {self.heroe.defensa} | Oro: {self.heroe.puntaje}", True, COLOR_AMARILLO_MENU), (320, ALTO_VENTANA - 40))
+        self.pantalla.blit(self.fuente.render(f"{self.nombre_zona_actual} ({self.indice_zona_actual+1}/20)", True, (100, 255, 100) if self.es_tienda else COLOR_BLANCO), (600, ALTO_VENTANA - 40))
 
     def actualizar(self):
         self.estado_actual.actualizar()
-        tiempo_actual = pygame.time.get_ticks()
-        if tiempo_actual - self.tiempo_ultima_animacion > self.velocidad_animacion_ms:
-            self.tiempo_ultima_animacion = tiempo_actual
+        t_act = pygame.time.get_ticks()
+        if t_act - self.tiempo_ultima_animacion > self.velocidad_animacion_ms:
+            self.tiempo_ultima_animacion = t_act
             self.indice_animacion += 1
-            if self.accion_actual_heroe == "WALK" and self.usar_sonidos:
-                if self.indice_animacion % 2 == 0: random.choice(self.sonidos_pasos).play()
+            if self.accion_actual_heroe == "WALK" and self.usar_sonidos and self.indice_animacion % 2 == 0: random.choice(self.sonidos_pasos).play()
         self.reloj.tick(FOTOGRAMAS_POR_SEGUNDO)
 
     def dibujar(self):
@@ -237,67 +186,52 @@ class MotorGrafico:
         self.dibujar_hud_inferior()
         pygame.display.flip()
 
-    def salir(self): 
-        pygame.quit()
+    def salir(self): pygame.quit()
 
     def guardar_partida(self):
+        # Función auxiliar para guardar items
+        def serializar_item(item):
+            if isinstance(item, Equipamiento): return {"clase": "Equipamiento", "nombre": item.nombre, "tipo": item.tipo, "atk": item.aumento_ataque, "def": item.aumento_defensa, "precio": item.precio_compra, "venta": item.valor_monetario}
+            elif isinstance(item, Consumible): return {"clase": "Consumible", "nombre": item.nombre, "tipo_rest": item.tipo_restauracion, "cant": item.cantidad, "precio": item.precio_compra}
+            return {"clase": "Tesoro", "nombre": item.nombre, "venta": item.valor_monetario}
+
         datos_guardado = {
             "zona_actual": self.indice_zona_actual,
             "heroe": {
-                "nombre": self.heroe.nombre,
-                "puntos_vida": self.heroe.puntos_vida,
-                "puntos_vida_max": getattr(self.heroe, "puntos_vida_max", 100),
-                "puntos_magia": getattr(self.heroe, "puntos_magia", 50),
-                "puntos_magia_max": getattr(self.heroe, "puntos_magia_max", 50),
-                "ataque": self.heroe.ataque,
-                "defensa": self.heroe.defensa,
-                "nivel": getattr(self.heroe, "nivel", 1),
-                "experiencia": getattr(self.heroe, "experiencia", 0),
-                "puntaje": self.heroe.puntaje,
-                "zonas_exploradas": getattr(self.heroe, "zonas_exploradas", 0),
-                "inventario": [{"nombre": obj.nombre} for obj in self.heroe.inventario]
+                "nombre": self.heroe.nombre, "puntos_vida": self.heroe.puntos_vida, "puntos_vida_max": self.heroe.puntos_vida_max,
+                "puntos_magia": self.heroe.puntos_magia, "puntos_magia_max": self.heroe.puntos_magia_max,
+                "ataque": self.heroe.ataque, "defensa": self.heroe.defensa, "nivel": self.heroe.nivel, "experiencia": self.heroe.experiencia,
+                "puntaje": self.heroe.puntaje, "zonas_exploradas": self.heroe.zonas_exploradas,
+                "arma": serializar_item(self.heroe.arma_equipada) if self.heroe.arma_equipada else None,
+                "armadura": serializar_item(self.heroe.armadura_equipada) if self.heroe.armadura_equipada else None,
+                "inventario": [serializar_item(obj) for obj in self.heroe.inventario]
             }
         }
         try:
-            with open("savegame.json", "w") as archivo:
-                json.dump(datos_guardado, archivo, indent=4)
+            with open("savegame.json", "w") as archivo: json.dump(datos_guardado, archivo, indent=4)
             return True
-        except Exception as e:
-            print(f"Error al guardar partida: {e}")
-            return False
+        except Exception as e: print(f"Error al guardar: {e}"); return False
 
     def cargar_partida(self):
-        if not os.path.exists("savegame.json"):
-            return False
-            
+        if not os.path.exists("savegame.json"): return False
+        def deserializar_item(datos):
+            if not datos: return None
+            if datos["clase"] == "Equipamiento": return Equipamiento(datos["nombre"], datos["tipo"], datos["atk"], datos["def"], datos["precio"], datos["venta"])
+            elif datos["clase"] == "Consumible": return Consumible(datos["nombre"], datos["tipo_rest"], datos["cant"], datos["precio"])
+            return Tesoro(datos["nombre"], datos["venta"])
+
         try:
-            with open("savegame.json", "r") as archivo:
-                datos = json.load(archivo)
-            
+            with open("savegame.json", "r") as archivo: datos = json.load(archivo)
             self.indice_zona_actual = datos["zona_actual"]
-            
             d_heroe = datos["heroe"]
-            self.heroe.nombre = d_heroe["nombre"]
-            self.heroe.puntos_vida = d_heroe["puntos_vida"]
-            self.heroe.ataque = d_heroe["ataque"]
-            self.heroe.defensa = d_heroe["defensa"]
-            self.heroe.puntaje = d_heroe["puntaje"]
+            self.heroe.nombre = d_heroe["nombre"]; self.heroe.puntos_vida = d_heroe["puntos_vida"]; self.heroe.ataque = d_heroe["ataque"]
+            self.heroe.defensa = d_heroe["defensa"]; self.heroe.puntaje = d_heroe["puntaje"]; self.heroe.puntos_magia = d_heroe["puntos_magia"]
+            self.heroe.puntos_vida_max = d_heroe["puntos_vida_max"]; self.heroe.puntos_magia_max = d_heroe["puntos_magia_max"]
+            self.heroe.nivel = d_heroe["nivel"]; self.heroe.experiencia = d_heroe["experiencia"]; self.heroe.zonas_exploradas = d_heroe["zonas_exploradas"]
             
-            if "puntos_magia" in d_heroe:
-                self.heroe.puntos_magia = d_heroe["puntos_magia"]
-                self.heroe.puntos_magia_max = d_heroe["puntos_magia_max"]
-            
-            if hasattr(self.heroe, "puntos_vida_max"): self.heroe.puntos_vida_max = d_heroe["puntos_vida_max"]
-            if hasattr(self.heroe, "nivel"): self.heroe.nivel = d_heroe["nivel"]
-            if hasattr(self.heroe, "experiencia"): self.heroe.experiencia = d_heroe["experiencia"]
-            if hasattr(self.heroe, "zonas_exploradas"): self.heroe.zonas_exploradas = d_heroe["zonas_exploradas"]
-            
-            self.heroe.inventario = []
-            for obj in d_heroe["inventario"]:
-                self.heroe.inventario.append(Tesoro(obj["nombre"], valor_monetario=0))
-            
+            self.heroe.arma_equipada = deserializar_item(d_heroe.get("arma"))
+            self.heroe.armadura_equipada = deserializar_item(d_heroe.get("armadura"))
+            self.heroe.inventario = [deserializar_item(obj) for obj in d_heroe["inventario"]]
             self.cargar_zona()
             return True
-        except Exception as e:
-            print(f"Error al cargar partida: {e}")
-            return False
+        except Exception as e: print(f"Error al cargar: {e}"); return False
