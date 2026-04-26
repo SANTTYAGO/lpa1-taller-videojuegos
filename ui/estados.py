@@ -145,9 +145,6 @@ class EstadoPausa(EstadoJuego):
             elif i == 5: texto = f"{marcador}Salir del Juego"
             self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color), (250, 260 + (i * 30)))
 
-# =======================================================
-# NUEVO: INVENTARIO MEJORADO CON EQUIPAMIENTO
-# =======================================================
 class EstadoInventario(EstadoJuego):
     def __init__(self, motor_grafico):
         super().__init__(motor_grafico)
@@ -188,7 +185,6 @@ class EstadoInventario(EstadoJuego):
         titulo = self.motor.fuente_gigante.render("Perfil e Inventario", True, COLOR_GIRASOL_ACENTO)
         self.motor.pantalla.blit(titulo, (ANCHO_VENTANA // 2 - titulo.get_width() // 2, 30))
 
-        # --- PANEL IZQUIERDO: Estadísticas y Equipo Activo ---
         rect_stats = pygame.Rect(40, 100, 360, 440)
         pygame.draw.rect(self.motor.pantalla, COLOR_NEGRO_FONDO, rect_stats, border_radius=10)
         pygame.draw.rect(self.motor.pantalla, COLOR_AZUL_HEROE, rect_stats, 3, border_radius=10)
@@ -206,29 +202,23 @@ class EstadoInventario(EstadoJuego):
             color = (100, 255, 100) if "Oro" in texto else COLOR_AMARILLO_MENU
             self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color), (60, 160 + (indice * 30)))
 
-        # Cajas visuales de equipo
         self.motor.pantalla.blit(self.motor.fuente_grande.render("Equipo Activo", True, COLOR_BLANCO), (60, 300))
-        
-        # Caja Arma
         pygame.draw.rect(self.motor.pantalla, (50, 20, 20), pygame.Rect(60, 340, 320, 45), border_radius=5)
         pygame.draw.rect(self.motor.pantalla, (255, 100, 100), pygame.Rect(60, 340, 320, 45), 2, border_radius=5)
         txt_arma = f"Arma: {self.motor.heroe.arma_equipada.nombre}" if self.motor.heroe.arma_equipada else "Arma: (Nada equipado)"
         self.motor.pantalla.blit(self.motor.fuente.render(txt_arma, True, COLOR_BLANCO), (70, 355))
 
-        # Caja Armadura
         pygame.draw.rect(self.motor.pantalla, (20, 40, 60), pygame.Rect(60, 400, 320, 45), border_radius=5)
         pygame.draw.rect(self.motor.pantalla, (100, 200, 255), pygame.Rect(60, 400, 320, 45), 2, border_radius=5)
         txt_armadura = f"Armadura: {self.motor.heroe.armadura_equipada.nombre}" if self.motor.heroe.armadura_equipada else "Armadura: (Nada equipado)"
         self.motor.pantalla.blit(self.motor.fuente.render(txt_armadura, True, COLOR_BLANCO), (70, 415))
 
-
-        # --- PANEL DERECHO: Mochila interactiva ---
         rect_inv = pygame.Rect(420, 100, 340, 440)
         pygame.draw.rect(self.motor.pantalla, COLOR_NEGRO_FONDO, rect_inv, border_radius=10)
         pygame.draw.rect(self.motor.pantalla, COLOR_GIRASOL_ACENTO, rect_inv, 3, border_radius=10)
         
         self.motor.pantalla.blit(self.motor.fuente_grande.render("Tu Mochila", True, COLOR_BLANCO), (440, 115))
-        self.motor.pantalla.blit(self.motor.fuente.render("Usa Flechas y ENTER (Equipar/Usar)", True, COLOR_AMARILLO_MENU), (440, 155))
+        self.motor.pantalla.blit(self.motor.fuente.render("Usa Flechas y ENTER", True, COLOR_AMARILLO_MENU), (440, 155))
         pygame.draw.line(self.motor.pantalla, COLOR_GIRASOL_ACENTO, (440, 185), (740, 185), 2)
 
         inventario = self.motor.heroe.inventario
@@ -254,13 +244,10 @@ class EstadoInventario(EstadoJuego):
                 texto_item = f"{marcador}{tipo_str} {item.nombre}"
                 self.motor.pantalla.blit(self.motor.fuente.render(texto_item, True, color_item), (440, 200 + (i * 28)))
 
-# =======================================================
-# NUEVO: TIENDA CON PESTAÑAS (COMPRAR / VENDER)
-# =======================================================
 class EstadoTienda(EstadoJuego):
     def __init__(self, motor_grafico):
         super().__init__(motor_grafico)
-        self.pestana = "COMPRAR" # o "VENDER"
+        self.pestana = "COMPRAR"
         self.cursor_compra = 0
         self.cursor_venta = 0
 
@@ -273,13 +260,11 @@ class EstadoTienda(EstadoJuego):
         zona = self.motor.mundo.zonas[self.motor.indice_zona_actual]
         inventario = self.motor.heroe.inventario
         
-        # Cambiar de Pestaña
         if evento.key == pygame.K_LEFT or evento.key == pygame.K_RIGHT:
             self.pestana = "VENDER" if self.pestana == "COMPRAR" else "COMPRAR"
             self.motor.mensaje_tienda = "¿Que vas a llevar?" if self.pestana == "COMPRAR" else "¡Muestrame tu basura!"
             return
 
-        # Lógica de Pestaña COMPRAR
         if self.pestana == "COMPRAR":
             if evento.key == pygame.K_UP and len(zona.mercancia) > 0: self.cursor_compra = (self.cursor_compra - 1) % len(zona.mercancia)
             elif evento.key == pygame.K_DOWN and len(zona.mercancia) > 0: self.cursor_compra = (self.cursor_compra + 1) % len(zona.mercancia)
@@ -294,7 +279,6 @@ class EstadoTienda(EstadoJuego):
                     self.motor.mensaje_tienda = f"¡Compraste {obj.nombre}!"
                 else: self.motor.mensaje_tienda = "¡No tienes suficiente Oro!"
 
-        # Lógica de Pestaña VENDER
         elif self.pestana == "VENDER":
             if len(inventario) > 0:
                 if evento.key == pygame.K_UP: self.cursor_venta = (self.cursor_venta - 1) % len(inventario)
@@ -318,14 +302,12 @@ class EstadoTienda(EstadoJuego):
         superficie.fill((20, 15, 30)) 
         self.motor.pantalla.blit(superficie, (0, 0))
 
-        # Pestañas Superiores
         color_compra = COLOR_GIRASOL_ACENTO if self.pestana == "COMPRAR" else (100, 100, 100)
         color_venta = COLOR_GIRASOL_ACENTO if self.pestana == "VENDER" else (100, 100, 100)
         self.motor.pantalla.blit(self.motor.fuente_gigante.render("[ COMPRAR ]", True, color_compra), (150, 30))
         self.motor.pantalla.blit(self.motor.fuente_gigante.render("[ VENDER ]", True, color_venta), (450, 30))
-        self.motor.pantalla.blit(self.motor.fuente.render("Usa <- y -> para cambiar de pestaña", True, COLOR_BLANCO), (250, 90))
+        self.motor.pantalla.blit(self.motor.fuente.render("Usa flechas para cambiar de pestaña", True, COLOR_BLANCO), (250, 90))
 
-        # Cuadro Central
         rect_main = pygame.Rect(50, 130, 700, 300)
         pygame.draw.rect(self.motor.pantalla, COLOR_GRIS_PANEL, rect_main, border_radius=15)
         pygame.draw.rect(self.motor.pantalla, COLOR_MORADO_MERCADER, rect_main, 3, border_radius=15)
@@ -355,7 +337,6 @@ class EstadoTienda(EstadoJuego):
                     texto = f"{marcador}{obj.nombre}  ..............  + {obj.valor_monetario} Oro"
                     self.motor.pantalla.blit(self.motor.fuente.render(texto, True, color_item), (70, 210 + (i * 35)))
 
-        # Cuadro Inferior Diálogo
         rect_msg = pygame.Rect(50, 450, 700, 100)
         pygame.draw.rect(self.motor.pantalla, COLOR_NEGRO_FONDO, rect_msg, border_radius=10)
         pygame.draw.rect(self.motor.pantalla, COLOR_GIRASOL_ACENTO, rect_msg, 2, border_radius=10)
@@ -366,119 +347,277 @@ class EstadoTienda(EstadoJuego):
 class EstadoExploracion(EstadoJuego):
     def manejar_evento(self, evento):
         if evento.type == pygame.KEYDOWN:
-            if evento.key == pygame.K_t and self.motor.es_tienda:
-                self.motor.estado_actual = self.motor.estado_tienda
-                self.motor.mensaje_tienda = "¡Bienvenido! Tengo mercancia de primera."
-            elif evento.key == pygame.K_ESCAPE:
+            if evento.key == pygame.K_ESCAPE:
                 self.motor.estado_actual = self.motor.estado_pausa
             elif evento.key == pygame.K_i:
                 self.motor.estado_actual = self.motor.estado_inventario
+            
+            # --- NUEVO: INTERACCIÓN MANUAL CON 'E' ---
+            elif evento.key == pygame.K_e:
+                # 1. Si estás cerca de la tienda
+                if self.motor.tienda_cercana:
+                    self.motor.estado_actual = self.motor.estado_tienda
+                    self.motor.mensaje_tienda = "¡Bienvenido! Tengo mercancia de primera."
+                
+                # 2. Si estás cerca de un objeto/cofre
+                elif self.motor.objeto_cercano:
+                    obj = self.motor.objeto_cercano
+                    if obj.esta_en_cofre:
+                        # Abrimos el cofre (desactivamos su bandera)
+                        obj.esta_en_cofre = False
+                        if self.motor.sonido_cofre and self.motor.usar_sonidos:
+                            self.motor.sonido_cofre.play()
+                        
+                        # Mostramos el loot
+                        aviso = TextoFlotante(f"¡{obj.nombre}!", obj.x, obj.y - 20, COLOR_AMARILLO_MENU, self.motor.fuente)
+                        self.motor.textos_flotantes.append(aviso)
+                        
+                    else:
+                        # Si ya estaba abierto o era botín tirado, lo recogemos
+                        if hasattr(obj, 'dano_explosion'):
+                            self.motor.heroe.recibir_dano(obj.dano_explosion)
+                            if not self.motor.heroe.esta_vivo():
+                                self.motor.estado_fin.es_victoria = False
+                                self.motor.estado_actual = self.motor.estado_fin
+                        else:
+                            self.motor.heroe.recolectar_objeto(obj)
+                            if obj.valor_monetario > 0:
+                                self.motor.heroe.ganar_puntaje(obj.valor_monetario) 
+                            if self.motor.usar_sonidos: self.motor.sonido_moneda.play()
+                            
+                            aviso = TextoFlotante("+1", obj.x, obj.y - 20, COLOR_BLANCO, self.motor.fuente)
+                            self.motor.textos_flotantes.append(aviso)
+                        
+                        # Lo borramos del mapa
+                        zona_actual = self.motor.mundo.zonas[self.motor.indice_zona_actual]
+                        if obj in zona_actual.objetos:
+                            zona_actual.objetos.remove(obj)
 
     def actualizar(self):
         self._procesar_movimiento_heroe()
+        
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             self.motor.enemigo_en_zona.actualizar_ia(self.motor.posicion_jugador_x, self.motor.posicion_jugador_y)
             self.motor.rectangulo_enemigo.x = self.motor.enemigo_en_zona.x
             self.motor.rectangulo_enemigo.y = self.motor.enemigo_en_zona.y
+
         self._verificar_colisiones_entidades()
+
+        for texto in self.motor.textos_flotantes[:]:
+            texto.actualizar()
+            if texto.opacidad <= 0: self.motor.textos_flotantes.remove(texto)
 
     def _procesar_movimiento_heroe(self):
         teclas = pygame.key.get_pressed()
         esta_moviendose = False
-        if teclas[pygame.K_LEFT] or teclas[pygame.K_a]: self.motor.posicion_jugador_x -= VELOCIDAD_MOVIMIENTO; self.motor.mirando_izquierda = True; esta_moviendose = True
-        if teclas[pygame.K_RIGHT] or teclas[pygame.K_d]: self.motor.posicion_jugador_x += VELOCIDAD_MOVIMIENTO; self.motor.mirando_izquierda = False; esta_moviendose = True
-        if teclas[pygame.K_UP] or teclas[pygame.K_w]: self.motor.posicion_jugador_y -= VELOCIDAD_MOVIMIENTO; esta_moviendose = True
-        if teclas[pygame.K_DOWN] or teclas[pygame.K_s]: self.motor.posicion_jugador_y += VELOCIDAD_MOVIMIENTO; esta_moviendose = True
+        
+        if teclas[pygame.K_LEFT] or teclas[pygame.K_a]:
+            self.motor.posicion_jugador_x -= VELOCIDAD_MOVIMIENTO
+            self.motor.mirando_izquierda = True
+            esta_moviendose = True
+        if teclas[pygame.K_RIGHT] or teclas[pygame.K_d]:
+            self.motor.posicion_jugador_x += VELOCIDAD_MOVIMIENTO
+            self.motor.mirando_izquierda = False
+            esta_moviendose = True
+        if teclas[pygame.K_UP] or teclas[pygame.K_w]:
+            self.motor.posicion_jugador_y -= VELOCIDAD_MOVIMIENTO
+            esta_moviendose = True
+        if teclas[pygame.K_DOWN] or teclas[pygame.K_s]:
+            self.motor.posicion_jugador_y += VELOCIDAD_MOVIMIENTO
+            esta_moviendose = True
+
         self.motor.accion_actual_heroe = "WALK" if esta_moviendose else "IDLE"
         self.motor.posicion_jugador_y = max(0, min(self.motor.posicion_jugador_y, ALTO_VENTANA - 60 - TAMANO_CELDA))
 
         if self.motor.posicion_jugador_x > ANCHO_VENTANA - TAMANO_CELDA:
             if self.motor.indice_zona_actual < len(self.motor.mundo.zonas) - 1:
-                self.motor.indice_zona_actual += 1; self.motor.cargar_zona(); self.motor.posicion_jugador_x = 0; self.motor.heroe.zonas_exploradas += 1 
+                self.motor.indice_zona_actual += 1
+                self.motor.cargar_zona()
+                self.motor.posicion_jugador_x = 0 
+                self.motor.heroe.zonas_exploradas += 1 
             else: self.motor.posicion_jugador_x = ANCHO_VENTANA - TAMANO_CELDA 
         elif self.motor.posicion_jugador_x < 0:
             if self.motor.indice_zona_actual > 0:
-                self.motor.indice_zona_actual -= 1; self.motor.cargar_zona(); self.motor.posicion_jugador_x = ANCHO_VENTANA - TAMANO_CELDA 
+                self.motor.indice_zona_actual -= 1
+                self.motor.cargar_zona()
+                self.motor.posicion_jugador_x = ANCHO_VENTANA - TAMANO_CELDA 
             else: self.motor.posicion_jugador_x = 0 
 
     def _verificar_colisiones_entidades(self):
+        # 1. Colisión de Combate (Se mantiene igual, si te toca hay pelea)
         rectangulo_heroe = pygame.Rect(self.motor.posicion_jugador_x, self.motor.posicion_jugador_y, TAMANO_CELDA, TAMANO_CELDA)
+        
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             if rectangulo_heroe.colliderect(self.motor.rectangulo_enemigo):
-                self.motor.estado_actual = self.motor.estado_combate; self.motor.turno_actual = "EVALUAR_JUGADOR"
+                self.motor.estado_actual = self.motor.estado_combate 
+                self.motor.turno_actual = "EVALUAR_JUGADOR"
                 self.motor.mensaje_combate = f"¡Emboscada! {self.motor.enemigo_en_zona.nombre} te ataca."
-                if self.motor.enemigo_en_zona.x < self.motor.posicion_jugador_x: self.motor.posicion_jugador_x += 40 
-                else: self.motor.posicion_jugador_x -= 40
+                
+                if self.motor.enemigo_en_zona.x < self.motor.posicion_jugador_x:
+                    self.motor.posicion_jugador_x += 40 
+                else:
+                    self.motor.posicion_jugador_x -= 40
+                    
                 self.motor.efecto_combate_activo = None 
                 if self.motor.usar_sonidos:
-                    pygame.mixer.music.load(os.path.join("assets", "Sonidos", "fight soundtrack.ogg")); pygame.mixer.music.play(-1)
-                    
+                    pygame.mixer.music.load(os.path.join("assets", "Sonidos", "fight soundtrack.ogg"))
+                    pygame.mixer.music.play(-1)
+
+        # --- NUEVO: Cálculo de Proximidad por Distancia ---
+        # Calculamos el centro exacto del jugador
+        centro_hx = self.motor.posicion_jugador_x + (TAMANO_CELDA // 2)
+        centro_hy = self.motor.posicion_jugador_y + (TAMANO_CELDA // 2)
+        
+        # Reseteamos variables cada fotograma
+        self.motor.tienda_cercana = False
+        self.motor.objeto_cercano = None
+
+        # a) Proximidad a la Tienda
+        if self.motor.es_tienda:
+            centro_tienda_x = self.motor.rectangulo_mercader.x + (TAMANO_CELDA // 2)
+            centro_tienda_y = self.motor.rectangulo_mercader.y + (TAMANO_CELDA // 2)
+            dist_tienda = math.sqrt((centro_hx - centro_tienda_x)**2 + (centro_hy - centro_tienda_y)**2)
+            
+            # Si el héroe está a menos de 80 píxeles del centro de la tienda
+            if dist_tienda < 80:
+                self.motor.tienda_cercana = True
+
+        # b) Proximidad a los Objetos
         zona_actual = self.motor.mundo.zonas[self.motor.indice_zona_actual]
-        objetos_a_eliminar = []
+        distancia_minima = 60 # Rango de recolección en píxeles
+        
         for obj in zona_actual.objetos:
-            rect_obj = pygame.Rect(obj.x, obj.y, TAMANO_CELDA, TAMANO_CELDA)
-            if rectangulo_heroe.colliderect(rect_obj):
-                if hasattr(obj, 'dano_explosion'):
-                    self.motor.heroe.recibir_dano(obj.dano_explosion)
-                    if not self.motor.heroe.esta_vivo(): self.motor.estado_fin.es_victoria = False; self.motor.estado_actual = self.motor.estado_fin
-                else:
-                    self.motor.heroe.recolectar_objeto(obj)
-                    if self.motor.usar_sonidos: self.motor.sonido_moneda.play()
-                objetos_a_eliminar.append(obj)
-        for obj in objetos_a_eliminar: zona_actual.objetos.remove(obj)
+            centro_obj_x = obj.x + (TAMANO_CELDA // 2)
+            centro_obj_y = obj.y + (TAMANO_CELDA // 2)
+            dist = math.sqrt((centro_hx - centro_obj_x)**2 + (centro_hy - centro_obj_y)**2)
+            
+            # Guardamos el objeto más cercano si está en rango
+            if dist < distancia_minima:
+                self.motor.objeto_cercano = obj
+                break # Solo detectamos uno a la vez para no recoger cosas dobles por error
 
     def dibujar(self):
         if self.motor.usar_sprites:
             for x in range(0, ANCHO_VENTANA, TAMANO_CELDA):
-                for y in range(0, ALTO_VENTANA - 60, TAMANO_CELDA): self.motor.pantalla.blit(self.motor.imagen_suelo, (x, y))
+                for y in range(0, ALTO_VENTANA - 60, TAMANO_CELDA):
+                    self.motor.pantalla.blit(self.motor.imagen_suelo, (x, y))
         else: self.motor.pantalla.fill(COLOR_VERDE_PASTO)
             
         if self.motor.es_tienda:
             if hasattr(self.motor, 'img_tienda') and self.motor.img_tienda:
-                self.motor.pantalla.blit(self.motor.img_tienda, (self.motor.rectangulo_mercader.x - (TAMANO_CELDA // 2), self.motor.rectangulo_mercader.y - TAMANO_CELDA))
-            else: pygame.draw.rect(self.motor.pantalla, COLOR_MORADO_MERCADER, self.motor.rectangulo_mercader)
-            self.motor.pantalla.blit(self.motor.fuente.render("Refugio del Mercader ('T')", True, COLOR_BLANCO), (ANCHO_VENTANA//2 - 100, 100))
+                pos_tienda_x = self.motor.rectangulo_mercader.x - (TAMANO_CELDA // 2)
+                pos_tienda_y = self.motor.rectangulo_mercader.y - TAMANO_CELDA
+                self.motor.pantalla.blit(self.motor.img_tienda, (pos_tienda_x, pos_tienda_y))
+            else:
+                pygame.draw.rect(self.motor.pantalla, COLOR_MORADO_MERCADER, self.motor.rectangulo_mercader)
+                
+            # --- CORRECCIÓN: Fondo negro (COLOR_NEGRO_FONDO) para el texto y posición más alta ---
+            texto_tienda = self.motor.fuente.render(" Refugio del Mercader ", True, COLOR_BLANCO, COLOR_NEGRO_FONDO)
+            self.motor.pantalla.blit(texto_tienda, (ANCHO_VENTANA//2 - texto_tienda.get_width()//2, 80))
+            
+            # Instrucción de interacción con fondo oscuro
+            if self.motor.tienda_cercana:
+                txt = self.motor.fuente.render(" Presiona [E] para Entrar ", True, COLOR_AMARILLO_MENU, COLOR_NEGRO_FONDO)
+                self.motor.pantalla.blit(txt, (self.motor.rectangulo_mercader.x - 30, self.motor.rectangulo_mercader.y - 25))
             
         for obj in self.motor.mundo.zonas[self.motor.indice_zona_actual].objetos:
             dibujado = False
-            if isinstance(obj, Tesoro):
-                if obj.valor_monetario > 40 and hasattr(self.motor, 'img_monedas_muchas') and self.motor.img_monedas_muchas: self.motor.pantalla.blit(self.motor.img_monedas_muchas, (obj.x + 16, obj.y + 16)); dibujado = True
-                elif hasattr(self.motor, 'img_monedas_pocas') and self.motor.img_monedas_pocas: self.motor.pantalla.blit(self.motor.img_monedas_pocas, (obj.x + 16, obj.y + 16)); dibujado = True
-            elif isinstance(obj, Consumible):
-                if obj.tipo_restauracion == "HP" and hasattr(self.motor, 'img_pocion_vida') and self.motor.img_pocion_vida: self.motor.pantalla.blit(self.motor.img_pocion_vida, (obj.x + 16, obj.y + 16)); dibujado = True
-                elif obj.tipo_restauracion == "MP" and hasattr(self.motor, 'img_pocion_mana') and self.motor.img_pocion_mana: self.motor.pantalla.blit(self.motor.img_pocion_mana, (obj.x + 16, obj.y + 16)); dibujado = True
-            elif isinstance(obj, Trampa):
-                if hasattr(self.motor, 'img_trampa') and self.motor.img_trampa: self.motor.pantalla.blit(self.motor.img_trampa, (obj.x + 16, obj.y + 16)); dibujado = True
-            elif isinstance(obj, Equipamiento):
-                if hasattr(self.motor, 'img_hacha') and self.motor.img_hacha: self.motor.pantalla.blit(self.motor.img_hacha, (obj.x + 16, obj.y + 16)); dibujado = True
+            
+            if obj.esta_en_cofre:
+                if hasattr(self.motor, 'img_cofre_cerrado') and self.motor.img_cofre_cerrado:
+                    self.motor.pantalla.blit(self.motor.img_cofre_cerrado, (obj.x + 12, obj.y + 12))
+                else:
+                    pygame.draw.rect(self.motor.pantalla, (139, 69, 19), pygame.Rect(obj.x + 16, obj.y + 16, 32, 24))
+                    pygame.draw.rect(self.motor.pantalla, (218, 165, 32), pygame.Rect(obj.x + 16, obj.y + 16, 32, 24), 2)
+                dibujado = True
+                
+            else:
+                if hasattr(self.motor, 'img_cofre_abierto') and self.motor.img_cofre_abierto:
+                    self.motor.pantalla.blit(self.motor.img_cofre_abierto, (obj.x + 12, obj.y + 12))
+
+                offset_y_loot = obj.y - 5
+
+                if isinstance(obj, Tesoro):
+                    if obj.valor_monetario > 40 and hasattr(self.motor, 'img_monedas_muchas') and self.motor.img_monedas_muchas:
+                        self.motor.pantalla.blit(self.motor.img_monedas_muchas, (obj.x + 16, offset_y_loot))
+                        dibujado = True
+                    elif hasattr(self.motor, 'img_monedas_pocas') and self.motor.img_monedas_pocas:
+                        self.motor.pantalla.blit(self.motor.img_monedas_pocas, (obj.x + 16, offset_y_loot))
+                        dibujado = True
+                        
+                elif isinstance(obj, Consumible):
+                    if obj.tipo_restauracion == "HP" and hasattr(self.motor, 'img_pocion_vida') and self.motor.img_pocion_vida:
+                        self.motor.pantalla.blit(self.motor.img_pocion_vida, (obj.x + 16, offset_y_loot))
+                        dibujado = True
+                    elif obj.tipo_restauracion == "MP" and hasattr(self.motor, 'img_pocion_mana') and self.motor.img_pocion_mana:
+                        self.motor.pantalla.blit(self.motor.img_pocion_mana, (obj.x + 16, offset_y_loot))
+                        dibujado = True
+                elif isinstance(obj, Trampa):
+                    if hasattr(self.motor, 'img_trampa') and self.motor.img_trampa:
+                        self.motor.pantalla.blit(self.motor.img_trampa, (obj.x + 16, offset_y_loot))
+                        dibujado = True
+                elif isinstance(obj, Equipamiento):
+                    if hasattr(self.motor, 'img_hacha') and self.motor.img_hacha:
+                        self.motor.pantalla.blit(self.motor.img_hacha, (obj.x + 16, offset_y_loot))
+                        dibujado = True
 
             if not dibujado:
-                if self.motor.imagen_objeto and not isinstance(obj, Tesoro) and not isinstance(obj, Consumible): self.motor.pantalla.blit(self.motor.imagen_objeto, (obj.x, obj.y))
+                if self.motor.imagen_objeto and not isinstance(obj, Tesoro) and not isinstance(obj, Consumible): 
+                    self.motor.pantalla.blit(self.motor.imagen_objeto, (obj.x, obj.y))
                 else:
-                    if isinstance(obj, Consumible): pygame.draw.circle(self.motor.pantalla, (0, 200, 255) if obj.tipo_restauracion == "MP" else (255, 50, 50), (obj.x + 32, obj.y + 32), 12)
-                    elif hasattr(obj, 'dano_explosion'): pygame.draw.polygon(self.motor.pantalla, (139, 0, 0), [(obj.x+32, obj.y+15), (obj.x+15, obj.y+49), (obj.x+49, obj.y+49)])
-                    else: pygame.draw.rect(self.motor.pantalla, COLOR_NARANJA_TESORO, pygame.Rect(obj.x + 16, obj.y + 16, 32, 32))
+                    if isinstance(obj, Consumible): 
+                        color_pocion = (0, 200, 255) if obj.tipo_restauracion == "MP" else (255, 50, 50)
+                        pygame.draw.circle(self.motor.pantalla, color_pocion, (obj.x + 32, obj.y + 32), 12)
+                        pygame.draw.rect(self.motor.pantalla, (200,200,200), pygame.Rect(obj.x + 28, obj.y + 14, 8, 8))
+                    elif hasattr(obj, 'dano_explosion'):
+                        pygame.draw.polygon(self.motor.pantalla, (139, 0, 0), [(obj.x+32, obj.y+15), (obj.x+15, obj.y+49), (obj.x+49, obj.y+49)])
+                    else:
+                        pygame.draw.rect(self.motor.pantalla, COLOR_NARANJA_TESORO, pygame.Rect(obj.x + 16, obj.y + 16, 32, 32))
+            
+            # --- CORRECCIÓN: Fondo oscuro para los textos de recoger/abrir objetos ---
+            if self.motor.objeto_cercano == obj:
+                txt_accion = " Presiona [E] para Abrir " if obj.esta_en_cofre else " Presiona [E] para Recoger "
+                txt_rend = self.motor.fuente.render(txt_accion, True, COLOR_BLANCO, COLOR_NEGRO_FONDO)
+                self.motor.pantalla.blit(txt_rend, (obj.x - 30, obj.y - 25))
                 
         if self.motor.enemigo_en_zona and self.motor.enemigo_en_zona.esta_vivo():
             if self.motor.usar_sprites:
-                anim_orco = self.motor.anim_enemigo_walk if self.motor.enemigo_en_zona.estado_ia == "PERSIGUIENDO" else self.motor.anim_enemigo_idle
-                imagen_orco = anim_orco[self.motor.indice_animacion % len(anim_orco)]
-                if self.motor.enemigo_en_zona.direccion_patrulla == -1 or (self.motor.enemigo_en_zona.estado_ia == "PERSIGUIENDO" and self.motor.posicion_jugador_x < self.motor.enemigo_en_zona.x): imagen_orco = pygame.transform.flip(imagen_orco, True, False)
-                self.motor.pantalla.blit(imagen_orco, (self.motor.rectangulo_enemigo.x - OFFSET_X, self.motor.rectangulo_enemigo.y - OFFSET_Y))
+                if self.motor.enemigo_en_zona.estado_ia == "PERSIGUIENDO": anim_orco = self.motor.anim_enemigo_walk
+                else: anim_orco = self.motor.anim_enemigo_idle
+                
+                indice_frame = self.motor.indice_animacion % len(anim_orco)
+                imagen_orco = anim_orco[indice_frame]
+                
+                if self.motor.enemigo_en_zona.direccion_patrulla == -1 or (self.motor.enemigo_en_zona.estado_ia == "PERSIGUIENDO" and self.motor.posicion_jugador_x < self.motor.enemigo_en_zona.x):
+                    imagen_orco = pygame.transform.flip(imagen_orco, True, False)
+
+                pos_e_x = self.motor.rectangulo_enemigo.x - OFFSET_X
+                pos_e_y = self.motor.rectangulo_enemigo.y - OFFSET_Y
+                self.motor.pantalla.blit(imagen_orco, (pos_e_x, pos_e_y))
             else: pygame.draw.rect(self.motor.pantalla, COLOR_ROJO_ENEMIGO, self.motor.rectangulo_enemigo)
                 
         if self.motor.usar_sprites:
             lista_frames = self.motor.anim_heroe_walk if self.motor.accion_actual_heroe == "WALK" else self.motor.anim_heroe_idle
-            imagen_actual = lista_frames[self.motor.indice_animacion % len(lista_frames)]
+            indice_frame = self.motor.indice_animacion % len(lista_frames)
+            imagen_actual = lista_frames[indice_frame]
             if self.motor.mirando_izquierda: imagen_actual = pygame.transform.flip(imagen_actual, True, False)
-            self.motor.pantalla.blit(imagen_actual, (self.motor.posicion_jugador_x - OFFSET_X, self.motor.posicion_jugador_y - OFFSET_Y))
-        else: pygame.draw.rect(self.motor.pantalla, COLOR_AZUL_HEROE, pygame.Rect(self.motor.posicion_jugador_x, self.motor.posicion_jugador_y, TAMANO_CELDA, TAMANO_CELDA))
+            
+            pos_h_x = self.motor.posicion_jugador_x - OFFSET_X
+            pos_h_y = self.motor.posicion_jugador_y - OFFSET_Y
+            self.motor.pantalla.blit(imagen_actual, (pos_h_x, pos_h_y))
+        else:
+            rect_h = pygame.Rect(self.motor.posicion_jugador_x, self.motor.posicion_jugador_y, TAMANO_CELDA, TAMANO_CELDA)
+            pygame.draw.rect(self.motor.pantalla, COLOR_AZUL_HEROE, rect_h)
 
         if not self.motor.es_tienda and self.motor.usar_sprites:
             superficie_niebla = pygame.Surface((ANCHO_VENTANA, ALTO_VENTANA), pygame.SRCALPHA)
             superficie_niebla.fill((5, 5, 10, 250)) 
-            superficie_niebla.blit(self.motor.imagen_luz, ((self.motor.posicion_jugador_x + 32) - 250, (self.motor.posicion_jugador_y + 32) - 250), special_flags=pygame.BLEND_RGBA_MIN)
+            centro_heroe_x = self.motor.posicion_jugador_x + (TAMANO_CELDA // 2)
+            centro_heroe_y = self.motor.posicion_jugador_y + (TAMANO_CELDA // 2)
+            superficie_niebla.blit(self.motor.imagen_luz, (centro_heroe_x - 250, centro_heroe_y - 250), special_flags=pygame.BLEND_RGBA_MIN)
             self.motor.pantalla.blit(superficie_niebla, (0, 0))
+            
+        for texto in self.motor.textos_flotantes: texto.dibujar(self.motor.pantalla)
 
 class EstadoCombate(EstadoJuego):
     def manejar_evento(self, evento):
@@ -504,10 +643,7 @@ class EstadoCombate(EstadoJuego):
                     self.motor.mensaje_combate = "¡No tienes suficiente Mana (MP) para hacer eso!"
                     return 
                 
-                # --- ¡AQUÍ ESTABA EL ERROR! ---
-                # Habíamos borrado la línea que activa la animación de ataque
                 self.motor.efecto_combate_activo = "HEROE_ATACA"
-                # ------------------------------
 
                 if self.motor.usar_sonidos and evento.key != pygame.K_c: 
                     self.motor.sonido_ataque.play()
@@ -569,9 +705,9 @@ class EstadoCombate(EstadoJuego):
                     if botin:
                         botin.x = self.motor.enemigo_en_zona.x
                         botin.y = self.motor.enemigo_en_zona.y
+                        # El botin del enemigo cae ABIERTO directamente
+                        botin.esta_en_cofre = False 
                         self.motor.mundo.zonas[self.motor.indice_zona_actual].objetos.append(botin)
-                        aviso_botin = TextoFlotante("¡Botin Soltado!", self.motor.enemigo_en_zona.x, self.motor.enemigo_en_zona.y - 20, COLOR_AMARILLO_MENU, self.motor.fuente)
-                        self.motor.textos_flotantes.append(aviso_botin)
 
                     self.motor.estado_actual = self.motor.estado_exploracion
                     if self.motor.usar_sonidos:

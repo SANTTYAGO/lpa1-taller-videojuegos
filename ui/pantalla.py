@@ -54,6 +54,10 @@ class MotorGrafico:
         self.efecto_combate_activo = None 
         self.tiempo_inicio_efecto = 0    
         
+        # --- NUEVO: Rastreadores de Interacción ---
+        self.objeto_cercano = None
+        self.tienda_cercana = False
+        
         self.cargar_recursos_graficos()
         self.cargar_sonidos()
         self.cargar_zona() 
@@ -98,7 +102,6 @@ class MotorGrafico:
 
     def cargar_recursos_graficos(self):
         self.usar_sprites = False
-        self.imagen_objeto = None
         try:
             esc_mapa = (TAMANO_CELDA, TAMANO_CELDA) 
             esc_personaje = (ESCALA_PERSONAJE, ESCALA_PERSONAJE)
@@ -130,9 +133,20 @@ class MotorGrafico:
 
             try:
                 self.img_trampa = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "Small Bomb", "96x96 - SmallBombStaticFrame1.png")).convert_alpha(), (32, 32))
-                self.img_hacha = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Armas", "axe1.png")).convert_alpha(), (32, 32))
+                self.img_hacha = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Armas", "axe1.png")).convert_alpha(), (64, 64))
             except:
                 self.img_trampa = None; self.img_hacha = None
+
+            # --- NUEVO: Carga de Cofres ---
+            try:
+                # Intentamos cargar una imagen de cofre si existe, si no, usaremos rectángulos marrones.
+                img_cofre_c = pygame.image.load(os.path.join("assets", "Objetos", "chest_closed.png")).convert_alpha()
+                self.img_cofre_cerrado = pygame.transform.scale(img_cofre_c, (40, 40))
+                img_cofre_a = pygame.image.load(os.path.join("assets", "Objetos", "chest_open.png")).convert_alpha()
+                self.img_cofre_abierto = pygame.transform.scale(img_cofre_a, (40, 40))
+            except:
+                self.img_cofre_cerrado = None
+                self.img_cofre_abierto = None
 
             self.imagen_luz = pygame.Surface((500, 500), pygame.SRCALPHA)
             self.imagen_luz.fill((255, 255, 255, 255)) 
@@ -150,6 +164,10 @@ class MotorGrafico:
         try:
             self.sonido_ataque = pygame.mixer.Sound(os.path.join("assets", "Sonidos", "knifeSlice.ogg"))
             self.sonido_moneda = pygame.mixer.Sound(os.path.join("assets", "Sonidos", "handleCoins.ogg"))
+            # Sonido para cofres
+            try: self.sonido_cofre = pygame.mixer.Sound(os.path.join("assets", "Sonidos", "creak1.ogg"))
+            except: self.sonido_cofre = None
+            
             self.sonidos_pasos = [pygame.mixer.Sound(os.path.join("assets", "Sonidos", f"footstep0{i}.ogg")) for i in range(10)]
             self.ajustar_volumen_sfx(0)
             pygame.mixer.music.set_volume(self.volumen_musica)
@@ -189,7 +207,6 @@ class MotorGrafico:
     def salir(self): pygame.quit()
 
     def guardar_partida(self):
-        # Función auxiliar para guardar items
         def serializar_item(item):
             if isinstance(item, Equipamiento): return {"clase": "Equipamiento", "nombre": item.nombre, "tipo": item.tipo, "atk": item.aumento_ataque, "def": item.aumento_defensa, "precio": item.precio_compra, "venta": item.valor_monetario}
             elif isinstance(item, Consumible): return {"clase": "Consumible", "nombre": item.nombre, "tipo_rest": item.tipo_restauracion, "cant": item.cantidad, "precio": item.precio_compra}
