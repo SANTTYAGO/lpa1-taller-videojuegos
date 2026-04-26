@@ -1,5 +1,7 @@
 # core/combate.py
 import random
+# Necesitamos saber si el personaje es un Pícaro para el golpe crítico
+from models.personaje import Picaro 
 
 class HabilidadCombate:
     """Clase Base (Interfaz) para cualquier tipo de habilidad en combate"""
@@ -18,9 +20,27 @@ class AtaqueBasico(HabilidadCombate):
 
     def ejecutar(self, atacante, defensor):
         variacion = random.randint(-2, 2)
-        dano = max(1, atacante.ataque - defensor.defensa + variacion)
-        defensor.recibir_dano(dano)
-        return dano, f"¡{atacante.nombre} ataca! Causa {dano} pts de daño."
+        dano_base = atacante.ataque - defensor.defensa + variacion
+        
+        # --- NUEVO: Mecánica de Crítico para Pícaro ---
+        es_critico = False
+        if isinstance(atacante, Picaro) and random.random() < 0.25:
+            dano_base *= 2
+            es_critico = True
+
+        dano = max(1, dano_base)
+        
+        # Guardamos si el defensor recibió el golpe o lo esquivó
+        golpe_acertado = defensor.recibir_dano(dano)
+        
+        if not golpe_acertado:
+            return 0, f"¡{defensor.nombre} ESQUIVÓ el ataque!"
+            
+        msg = f"¡{atacante.nombre} ataca! Causa {dano} pts."
+        if es_critico:
+            msg = "¡GOLPE CRÍTICO! " + msg
+            
+        return dano, msg
 
 
 class GolpeEspecial(HabilidadCombate):
@@ -32,13 +52,15 @@ class GolpeEspecial(HabilidadCombate):
         atacante.puntos_magia -= self.costo_mp
         dano_base = atacante.ataque * 1.8
         dano = max(5, int(dano_base - (defensor.defensa * 0.4))) 
-        defensor.recibir_dano(dano)
+        
+        golpe_acertado = defensor.recibir_dano(dano)
+        if not golpe_acertado:
+            return 0, f"¡{defensor.nombre} esquivó el golpe especial!"
         
         msg = f"¡{atacante.nombre} usa {self.nombre}! Causa {dano} pts."
         
-        # --- NUEVO: 30% de probabilidad de aplicar estado Aturdido ---
         if random.random() < 0.30:
-            defensor.aplicar_estado("aturdido", 1) # Dura 1 turno
+            defensor.aplicar_estado("aturdido", 1) 
             msg += " ¡El enemigo quedó ATURDIDO!"
             
         return dano, msg
@@ -64,13 +86,15 @@ class AtaqueEnemigo(HabilidadCombate):
     def ejecutar(self, atacante, defensor):
         variacion = random.randint(-2, 2)
         dano = max(1, atacante.ataque - defensor.defensa + variacion)
-        defensor.recibir_dano(dano)
+        
+        golpe_acertado = defensor.recibir_dano(dano)
+        if not golpe_acertado:
+            return 0, f"¡Esquivaste ágilmente el ataque de {atacante.nombre}!"
         
         msg = f"¡{atacante.nombre} ataca! Causa {dano} pts."
         
-        # --- NUEVO: 25% de probabilidad de envenenarte ---
         if random.random() < 0.25:
-            defensor.aplicar_estado("veneno", 3) # Dura 3 turnos
+            defensor.aplicar_estado("veneno", 3) 
             msg += " ¡Te ha ENVENENADO!"
             
         return dano, msg
