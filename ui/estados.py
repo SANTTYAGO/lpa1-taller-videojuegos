@@ -483,38 +483,71 @@ class EstadoExploracion(EstadoJuego):
 class EstadoCombate(EstadoJuego):
     def manejar_evento(self, evento):
         if evento.type != pygame.KEYDOWN: return
+        
         if self.motor.turno_actual == "TURNO_PERDIDO_JUGADOR":
-            if evento.key == pygame.K_RETURN: self.motor.turno_actual = "EVALUAR_ENEMIGO"
-        elif self.motor.turno_actual == "TURNO_PERDIDO_ENEMIGO":
-            if evento.key == pygame.K_RETURN: self.motor.turno_actual = "EVALUAR_JUGADOR"
-        elif self.motor.turno_actual == "JUGADOR":
-            habilidad = None
-            if evento.key == pygame.K_a: habilidad = AtaqueBasico()
-            elif evento.key == pygame.K_s: habilidad = GolpeEspecial()
-            elif evento.key == pygame.K_c: habilidad = Curacion()
+            if evento.key == pygame.K_RETURN:
+                self.motor.turno_actual = "EVALUAR_ENEMIGO"
                 
-            if habilidad:
-                if self.motor.heroe.puntos_magia < habilidad.costo_mp:
+        elif self.motor.turno_actual == "TURNO_PERDIDO_ENEMIGO":
+            if evento.key == pygame.K_RETURN:
+                self.motor.turno_actual = "EVALUAR_JUGADOR"
+
+        elif self.motor.turno_actual == "JUGADOR":
+            habilidad_seleccionada = None
+            
+            if evento.key == pygame.K_a: habilidad_seleccionada = AtaqueBasico()
+            elif evento.key == pygame.K_s: habilidad_seleccionada = GolpeEspecial()
+            elif evento.key == pygame.K_c: habilidad_seleccionada = Curacion()
+                
+            if habilidad_seleccionada:
+                if self.motor.heroe.puntos_magia < habilidad_seleccionada.costo_mp:
                     self.motor.mensaje_combate = "¡No tienes suficiente Mana (MP) para hacer eso!"
                     return 
-                if self.motor.usar_sonidos and evento.key != pygame.K_c: self.motor.sonido_ataque.play()
-                self.motor.tiempo_inicio_efecto = pygame.time.get_ticks(); self.motor.indice_animacion = 0 
-                danio, msg = habilidad.ejecutar(self.motor.heroe, self.motor.enemigo_en_zona)
+                
+                # --- ¡AQUÍ ESTABA EL ERROR! ---
+                # Habíamos borrado la línea que activa la animación de ataque
+                self.motor.efecto_combate_activo = "HEROE_ATACA"
+                # ------------------------------
+
+                if self.motor.usar_sonidos and evento.key != pygame.K_c: 
+                    self.motor.sonido_ataque.play()
+
+                self.motor.tiempo_inicio_efecto = pygame.time.get_ticks()
+                self.motor.indice_animacion = 0 
+                
+                danio, msg = habilidad_seleccionada.ejecutar(self.motor.heroe, self.motor.enemigo_en_zona)
                 self.motor.mensaje_combate = msg
                 
-                if danio > 0: self.motor.textos_flotantes.append(TextoFlotante(f"-{danio}", 500, 150, COLOR_BLANCO, self.motor.fuente_gigante))
-                elif evento.key == pygame.K_c: self.motor.textos_flotantes.append(TextoFlotante("+HP", 200, 150, (100, 255, 100), self.motor.fuente_gigante))
+                if danio > 0:
+                    texto_danio = TextoFlotante(f"-{danio}", 500, 150, COLOR_BLANCO, self.motor.fuente_gigante)
+                    self.motor.textos_flotantes.append(texto_danio)
+                elif evento.key == pygame.K_c:
+                    texto_cura = TextoFlotante("+HP", 200, 150, (100, 255, 100), self.motor.fuente_gigante)
+                    self.motor.textos_flotantes.append(texto_cura)
 
-                self.motor.turno_actual = "VICTORIA" if not self.motor.enemigo_en_zona.esta_vivo() else "EVALUAR_ENEMIGO"
+                if not self.motor.enemigo_en_zona.esta_vivo(): 
+                    self.motor.turno_actual = "VICTORIA"
+                else: 
+                    self.motor.turno_actual = "EVALUAR_ENEMIGO" 
                     
         elif self.motor.turno_actual == "ENEMIGO":
             if evento.key == pygame.K_SPACE:
                 self.motor.efecto_combate_activo = "ENEMIGO_ATACA"
-                self.motor.tiempo_inicio_efecto = pygame.time.get_ticks(); self.motor.indice_animacion = 0
-                danio, msg = AtaqueEnemigo().ejecutar(self.motor.enemigo_en_zona, self.motor.heroe)
+                self.motor.tiempo_inicio_efecto = pygame.time.get_ticks()
+                self.motor.indice_animacion = 0
+                
+                ataque_enemigo = AtaqueEnemigo()
+                danio, msg = ataque_enemigo.ejecutar(self.motor.enemigo_en_zona, self.motor.heroe)
                 self.motor.mensaje_combate = msg
-                self.motor.textos_flotantes.append(TextoFlotante(f"-{danio}", 200, 150, COLOR_ROJO_ENEMIGO, self.motor.fuente_gigante))
-                self.motor.turno_actual = "DERROTA" if not self.motor.heroe.esta_vivo() else "EVALUAR_JUGADOR"
+                
+                texto_danio = TextoFlotante(f"-{danio}", 200, 150, COLOR_ROJO_ENEMIGO, self.motor.fuente_gigante)
+                self.motor.textos_flotantes.append(texto_danio)
+                
+                if not self.motor.heroe.esta_vivo():
+                    self.motor.turno_actual = "DERROTA"
+                    self.motor.estado_fin.es_victoria = False
+                else: 
+                    self.motor.turno_actual = "EVALUAR_JUGADOR" 
                     
         elif self.motor.turno_actual == "VICTORIA":
             if evento.key == pygame.K_RETURN:
@@ -523,7 +556,8 @@ class EstadoCombate(EstadoJuego):
                 self.motor.textos_flotantes.clear() 
                 
                 if self.motor.enemigo_en_zona.nombre == "Rey Demonio":
-                    self.motor.estado_fin.es_victoria = True; self.motor.estado_actual = self.motor.estado_fin
+                    self.motor.estado_fin.es_victoria = True
+                    self.motor.estado_actual = self.motor.estado_fin
                 else:
                     probabilidad_loot = random.random()
                     botin = None
@@ -533,16 +567,21 @@ class EstadoCombate(EstadoJuego):
                     elif probabilidad_loot < 0.75: botin = Equipamiento("Arma de Orco Caido", "arma", 10, 2, 80, 40)
                         
                     if botin:
-                        botin.x = self.motor.enemigo_en_zona.x; botin.y = self.motor.enemigo_en_zona.y
+                        botin.x = self.motor.enemigo_en_zona.x
+                        botin.y = self.motor.enemigo_en_zona.y
                         self.motor.mundo.zonas[self.motor.indice_zona_actual].objetos.append(botin)
-                        self.motor.textos_flotantes.append(TextoFlotante("¡Botin Soltado!", self.motor.enemigo_en_zona.x, self.motor.enemigo_en_zona.y - 20, COLOR_AMARILLO_MENU, self.motor.fuente))
+                        aviso_botin = TextoFlotante("¡Botin Soltado!", self.motor.enemigo_en_zona.x, self.motor.enemigo_en_zona.y - 20, COLOR_AMARILLO_MENU, self.motor.fuente)
+                        self.motor.textos_flotantes.append(aviso_botin)
 
                     self.motor.estado_actual = self.motor.estado_exploracion
-                    if self.motor.usar_sonidos: pygame.mixer.music.load(os.path.join("assets", "Sonidos", "game soundtrack.mp3")); pygame.mixer.music.play(-1)
+                    if self.motor.usar_sonidos:
+                        pygame.mixer.music.load(os.path.join("assets", "Sonidos", "game soundtrack.mp3"))
+                        pygame.mixer.music.play(-1)
                         
         elif self.motor.turno_actual == "DERROTA":
             if evento.key == pygame.K_RETURN:
-                self.motor.textos_flotantes.clear(); self.motor.estado_actual = self.motor.estado_fin
+                self.motor.textos_flotantes.clear()
+                self.motor.estado_actual = self.motor.estado_fin
 
     def actualizar(self):
         for texto in self.motor.textos_flotantes[:]:
@@ -551,43 +590,72 @@ class EstadoCombate(EstadoJuego):
 
         if self.motor.turno_actual == "EVALUAR_JUGADOR":
             aturdido, mensajes, dano_veneno = self.motor.heroe.procesar_estados()
-            if dano_veneno > 0: self.motor.textos_flotantes.append(TextoFlotante(f"-{dano_veneno}", 200, 150, COLOR_VENENO, self.motor.fuente_gigante))
-            if mensajes: self.motor.mensaje_combate = " | ".join(mensajes)
-            if not self.motor.heroe.esta_vivo(): self.motor.turno_actual = "DERROTA"; self.motor.estado_fin.es_victoria = False
-            elif aturdido: self.motor.turno_actual = "TURNO_PERDIDO_JUGADOR"
+            
+            if dano_veneno > 0:
+                texto_veneno = TextoFlotante(f"-{dano_veneno}", 200, 150, COLOR_VENENO, self.motor.fuente_gigante)
+                self.motor.textos_flotantes.append(texto_veneno)
+                
+            if mensajes:
+                self.motor.mensaje_combate = " | ".join(mensajes)
+                
+            if not self.motor.heroe.esta_vivo():
+                self.motor.turno_actual = "DERROTA"
+                self.motor.estado_fin.es_victoria = False
+            elif aturdido:
+                self.motor.turno_actual = "TURNO_PERDIDO_JUGADOR"
             else:
-                if not mensajes: self.motor.mensaje_combate = "¡Es tu turno! ¿Que vas a hacer?"
+                if not mensajes:
+                    self.motor.mensaje_combate = "¡Es tu turno! ¿Que vas a hacer?"
                 self.motor.turno_actual = "JUGADOR"
                 
         elif self.motor.turno_actual == "EVALUAR_ENEMIGO":
             aturdido, mensajes, dano_veneno = self.motor.enemigo_en_zona.procesar_estados()
-            if dano_veneno > 0: self.motor.textos_flotantes.append(TextoFlotante(f"-{dano_veneno}", 500, 150, COLOR_VENENO, self.motor.fuente_gigante))
-            if mensajes: self.motor.mensaje_combate = "Enemigo: " + " | ".join(mensajes)
-            if not self.motor.enemigo_en_zona.esta_vivo(): self.motor.turno_actual = "VICTORIA"
-            elif aturdido: self.motor.turno_actual = "TURNO_PERDIDO_ENEMIGO"
+            
+            if dano_veneno > 0:
+                texto_veneno = TextoFlotante(f"-{dano_veneno}", 500, 150, COLOR_VENENO, self.motor.fuente_gigante)
+                self.motor.textos_flotantes.append(texto_veneno)
+                
+            if mensajes:
+                self.motor.mensaje_combate = "Enemigo: " + " | ".join(mensajes)
+                
+            if not self.motor.enemigo_en_zona.esta_vivo():
+                self.motor.turno_actual = "VICTORIA"
+            elif aturdido:
+                self.motor.turno_actual = "TURNO_PERDIDO_ENEMIGO"
             else:
-                if not mensajes: self.motor.mensaje_combate = f"¡{self.motor.enemigo_en_zona.nombre} se prepara para atacar!"
+                if not mensajes:
+                    self.motor.mensaje_combate = f"¡{self.motor.enemigo_en_zona.nombre} se prepara para atacar!"
                 self.motor.turno_actual = "ENEMIGO"
 
     def dibujar(self):
         self.motor.pantalla.fill(COLOR_NEGRO_FONDO)
-        self.motor.pantalla.blit(self.motor.fuente_grande.render(f"VS {self.motor.enemigo_en_zona.nombre}", True, COLOR_ROJO_ENEMIGO), (ANCHO_VENTANA // 2 - 80, 30))
-        self.motor.pantalla.blit(self.motor.fuente.render(f"Vida Enemigo: {self.motor.enemigo_en_zona.puntos_vida}", True, COLOR_BLANCO), (ANCHO_VENTANA // 2 - 80, 80))
+        texto_vs = self.motor.fuente_grande.render(f"VS {self.motor.enemigo_en_zona.nombre}", True, COLOR_ROJO_ENEMIGO)
+        texto_vida_e = self.motor.fuente.render(f"Vida Enemigo: {self.motor.enemigo_en_zona.puntos_vida}", True, COLOR_BLANCO)
+        self.motor.pantalla.blit(texto_vs, (ANCHO_VENTANA // 2 - texto_vs.get_width() // 2, 30))
+        self.motor.pantalla.blit(texto_vida_e, (ANCHO_VENTANA // 2 - texto_vida_e.get_width() // 2, 80))
         
         if self.motor.usar_sprites:
-            duracion = pygame.time.get_ticks() - self.motor.tiempo_inicio_efecto
-            if self.motor.efecto_combate_activo == "HEROE_ATACA" and duracion < 600: img_heroe = self.motor.anim_heroe_attack[min(self.motor.indice_animacion, len(self.motor.anim_heroe_attack) - 1)]
-            else: img_heroe = self.motor.anim_heroe_idle[self.motor.indice_animacion % len(self.motor.anim_heroe_idle)]
+            tiempo_actual = pygame.time.get_ticks()
+            duracion = tiempo_actual - self.motor.tiempo_inicio_efecto
+            
+            if self.motor.efecto_combate_activo == "HEROE_ATACA" and duracion < 600: frame_idx = min(self.motor.indice_animacion, len(self.motor.anim_heroe_attack) - 1); img_heroe = self.motor.anim_heroe_attack[frame_idx]
+            else: frame_idx = self.motor.indice_animacion % len(self.motor.anim_heroe_idle); img_heroe = self.motor.anim_heroe_idle[frame_idx]
                 
-            if self.motor.efecto_combate_activo == "ENEMIGO_ATACA" and duracion < 600: img_enemigo = self.motor.anim_enemigo_attack[min(self.motor.indice_animacion, len(self.motor.anim_enemigo_attack) - 1)]
-            else: img_enemigo = self.motor.anim_enemigo_idle[self.motor.indice_animacion % len(self.motor.anim_enemigo_idle)]
+            if self.motor.efecto_combate_activo == "ENEMIGO_ATACA" and duracion < 600: frame_idx = min(self.motor.indice_animacion, len(self.motor.anim_enemigo_attack) - 1); img_enemigo = self.motor.anim_enemigo_attack[frame_idx]
+            else: frame_idx = self.motor.indice_animacion % len(self.motor.anim_enemigo_idle); img_enemigo = self.motor.anim_enemigo_idle[frame_idx]
                 
             self.motor.pantalla.blit(pygame.transform.scale(img_heroe, (250, 250)), (100, 100))
-            self.motor.pantalla.blit(pygame.transform.flip(pygame.transform.scale(img_enemigo, (250, 250)), True, False), (450, 100))
+            enemigo_g = pygame.transform.scale(img_enemigo, (250, 250))
+            self.motor.pantalla.blit(pygame.transform.flip(enemigo_g, True, False), (450, 100))
             
-            txt_est_h = ", ".join([k.capitalize() for k, v in self.motor.heroe.estados.items() if v > 0])
+            def obtener_texto_estados(entidad):
+                estados_activos = [k.capitalize() for k, v in entidad.estados.items() if v > 0]
+                return ", ".join(estados_activos)
+            
+            txt_est_h = obtener_texto_estados(self.motor.heroe)
             if txt_est_h: self.motor.pantalla.blit(self.motor.fuente.render(txt_est_h, True, COLOR_VENENO), (180, 320))
-            txt_est_e = ", ".join([k.capitalize() for k, v in self.motor.enemigo_en_zona.estados.items() if v > 0])
+            
+            txt_est_e = obtener_texto_estados(self.motor.enemigo_en_zona)
             if txt_est_e: self.motor.pantalla.blit(self.motor.fuente.render(txt_est_e, True, COLOR_VENENO), (530, 320))
 
         rect_mensaje = pygame.Rect(100, 350, 600, 150)
@@ -595,7 +663,9 @@ class EstadoCombate(EstadoJuego):
         pygame.draw.rect(self.motor.pantalla, COLOR_AMARILLO_MENU, rect_mensaje, 3)
         self.motor.pantalla.blit(self.motor.fuente.render(self.motor.mensaje_combate, True, COLOR_BLANCO), (120, 370))
         
-        if self.motor.turno_actual == "JUGADOR": inst = "[A] Basico | [S] Feroz (-15 MP) | [C] Curar (-20 MP)"; color_inst = COLOR_AMARILLO_MENU
+        if self.motor.turno_actual == "JUGADOR": 
+            inst = "[A] Basico | [S] Feroz (-15 MP) | [C] Curar (-20 MP)"
+            color_inst = COLOR_AMARILLO_MENU
         elif self.motor.turno_actual == "ENEMIGO": inst = "▶ Presiona 'ESPACIO' para recibir ataque"; color_inst = COLOR_AMARILLO_MENU
         elif self.motor.turno_actual == "TURNO_PERDIDO_JUGADOR": inst = "▶ Estas aturdido. Presiona 'ENTER' para pasar turno"; color_inst = COLOR_VENENO
         elif self.motor.turno_actual == "TURNO_PERDIDO_ENEMIGO": inst = "▶ Enemigo aturdido. Presiona 'ENTER' para pasar turno"; color_inst = (100, 255, 100)
