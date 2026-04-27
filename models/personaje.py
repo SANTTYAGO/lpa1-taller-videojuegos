@@ -42,7 +42,7 @@ class Personaje:
         if self.estados["aturdido"] > 0:
             aturdido = True
             self.estados["aturdido"] -= 1
-            mensajes.append("¡Estás Aturdido y no puedes moverte!")
+            mensajes.append("¡Estas Aturdido y no puedes moverte!")
 
         return aturdido, mensajes, dano_total
 
@@ -125,9 +125,7 @@ class Picaro(Personaje):
         super().__init__(nombre=f"{nombre} Sombra", puntos_vida=100, puntos_magia=50, ataque=12, defensa=4)
         self.clase_str = "Picaro"
 
-# --- NUEVA CLASE ---
 class Arquero(Personaje):
     def __init__(self, nombre: str):
-        # Stats equilibrados, enfocado en daño físico a distancia
         super().__init__(nombre=f"{nombre} Ojo de Halcon", puntos_vida=90, puntos_magia=40, ataque=18, defensa=3)
         self.clase_str = "Arquero"

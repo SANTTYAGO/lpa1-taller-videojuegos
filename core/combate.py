@@ -1,7 +1,5 @@
 # core/combate.py
 import random
-# Necesitamos saber si el personaje es un Pícaro para el golpe crítico
-from models.personaje import Picaro 
 
 class HabilidadCombate:
     """Clase Base (Interfaz) para cualquier tipo de habilidad en combate"""
@@ -10,35 +8,33 @@ class HabilidadCombate:
         self.costo_mp = costo_mp
 
     def ejecutar(self, atacante, defensor):
-        raise NotImplementedError("Este método debe ser sobrescrito por las clases hijas.")
+        raise NotImplementedError("Este metodo debe ser sobrescrito por las clases hijas.")
 
 
 class AtaqueBasico(HabilidadCombate):
     """Ataque normal sin costo. Resta defensa directamente."""
     def __init__(self):
-        super().__init__("Ataque Básico", costo_mp=0)
+        super().__init__("Ataque Basico", costo_mp=0)
 
     def ejecutar(self, atacante, defensor):
         variacion = random.randint(-2, 2)
         dano_base = atacante.ataque - defensor.defensa + variacion
         
-        # --- NUEVO: Mecánica de Crítico para Pícaro ---
         es_critico = False
-        if isinstance(atacante, Picaro) and random.random() < 0.25:
+        if getattr(atacante, 'clase_str', '') == "Picaro" and random.random() < 0.25:
             dano_base *= 2
             es_critico = True
 
         dano = max(1, dano_base)
         
-        # Guardamos si el defensor recibió el golpe o lo esquivó
         golpe_acertado = defensor.recibir_dano(dano)
         
         if not golpe_acertado:
-            return 0, f"¡{defensor.nombre} ESQUIVÓ el ataque!"
+            return 0, f"¡{defensor.nombre} ESQUIVO el ataque!"
             
         msg = f"¡{atacante.nombre} ataca! Causa {dano} pts."
         if es_critico:
-            msg = "¡GOLPE CRÍTICO! " + msg
+            msg = "¡GOLPE CRITICO! " + msg
             
         return dano, msg
 
@@ -55,13 +51,13 @@ class GolpeEspecial(HabilidadCombate):
         
         golpe_acertado = defensor.recibir_dano(dano)
         if not golpe_acertado:
-            return 0, f"¡{defensor.nombre} esquivó el golpe especial!"
+            return 0, f"¡{defensor.nombre} esquivo el golpe especial!"
         
         msg = f"¡{atacante.nombre} usa {self.nombre}! Causa {dano} pts."
         
         if random.random() < 0.30:
             defensor.aplicar_estado("aturdido", 1) 
-            msg += " ¡El enemigo quedó ATURDIDO!"
+            msg += " ¡El enemigo quedo ATURDIDO!"
             
         return dano, msg
 
@@ -81,7 +77,7 @@ class Curacion(HabilidadCombate):
 class AtaqueEnemigo(HabilidadCombate):
     """Ataque que usa la IA, tiene probabilidad de causar VENENO."""
     def __init__(self):
-        super().__init__("Ataque Tóxico", costo_mp=0)
+        super().__init__("Ataque Toxico", costo_mp=0)
 
     def ejecutar(self, atacante, defensor):
         variacion = random.randint(-2, 2)
@@ -89,7 +85,7 @@ class AtaqueEnemigo(HabilidadCombate):
         
         golpe_acertado = defensor.recibir_dano(dano)
         if not golpe_acertado:
-            return 0, f"¡Esquivaste ágilmente el ataque de {atacante.nombre}!"
+            return 0, f"¡Esquivaste agilmente el ataque de {atacante.nombre}!"
         
         msg = f"¡{atacante.nombre} ataca! Causa {dano} pts."
         

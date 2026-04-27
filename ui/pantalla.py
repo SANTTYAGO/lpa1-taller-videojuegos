@@ -123,14 +123,14 @@ class MotorGrafico:
             except: self.img_tienda = None
 
             try:
-                self.img_monedas_pocas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-stack.png")).convert_alpha(), (32, 32))
-                self.img_monedas_muchas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-bundle.png")).convert_alpha(), (32, 32))
+                self.img_monedas_pocas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-stack.png")).convert_alpha(), (16, 16))
+                self.img_monedas_muchas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-bundle.png")).convert_alpha(), (16, 16))
             except: 
                 self.img_monedas_pocas = None; self.img_monedas_muchas = None
 
             try:
-                self.img_pocion_vida = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "bottle Red", "Sprites", "Big Vial - RED - 0000.png")).convert_alpha(), (32, 32))
-                self.img_pocion_mana = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "bottle Blue", "Sprites", "Big Vial - TURQUOISE - 0000.png")).convert_alpha(), (32, 32))
+                self.img_pocion_vida = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "bottle Red", "Sprites", "Big Vial - RED - 0000.png")).convert_alpha(), (16, 16))
+                self.img_pocion_mana = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "bottle Blue", "Sprites", "Big Vial - TURQUOISE - 0000.png")).convert_alpha(), (16, 16))
             except:
                 self.img_pocion_vida = None; self.img_pocion_mana = None
 
@@ -162,7 +162,7 @@ class MotorGrafico:
 
             self.usar_sprites = True
         except Exception as error: 
-            print(f"Modo gráfico simplificado activado. Error: {error}")
+            print(f"Modo grafico simplificado activado. Error: {error}")
 
     def cargar_sonidos(self):
         self.usar_sonidos = False
