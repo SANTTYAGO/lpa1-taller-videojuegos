@@ -21,6 +21,8 @@ class Personaje:
         self.arma_equipada = None 
         self.armadura_equipada = None
         self.estados = {"veneno": 0, "aturdido": 0}
+        
+        self.clase_str = "Aventurero"
 
     def aplicar_estado(self, estado: str, turnos: int):
         self.estados[estado] = turnos
@@ -75,13 +77,9 @@ class Personaje:
             self.inventario.remove(equipamiento) 
 
     def recibir_dano(self, cantidad: int):
-        # --- NUEVO: Probabilidad de esquivar del Pícaro ---
-        # Verificamos si la instancia actual es de tipo Picaro
-        if isinstance(self, Picaro):
-            # 20% de probabilidad de esquivar el daño por completo
+        if getattr(self, 'clase_str', '') == "Picaro":
             if random.random() < 0.20:
-                print(f"¡{self.nombre} ha esquivado el ataque!")
-                return False # Retornamos False para indicar que no hubo daño
+                return False 
 
         self.puntos_vida -= cantidad
         if self.puntos_vida < 0:
@@ -112,21 +110,24 @@ class Personaje:
         self.zonas_exploradas += 1
 
 
-# --- NUEVAS CLASES HIJAS ---
-
 class Caballero(Personaje):
     def __init__(self, nombre: str):
-        # Llama al constructor de Personaje con estadísticas únicas
-        # Alta vida (150) y defensa (8), poca magia (20)
         super().__init__(nombre=f"Sir {nombre}", puntos_vida=150, puntos_magia=20, ataque=15, defensa=8)
+        self.clase_str = "Caballero"
 
 class Mago(Personaje):
     def __init__(self, nombre: str):
-        # Baja vida (70) y defensa (2), pero altísima magia (120) y ataque inicial (20)
         super().__init__(nombre=f"{nombre} el Sabio", puntos_vida=70, puntos_magia=120, ataque=20, defensa=2)
+        self.clase_str = "Mago"
 
 class Picaro(Personaje):
     def __init__(self, nombre: str):
-        # Stats balanceadas (100 HP, 50 MP, 12 ATK, 4 DEF)
-        # La magia de esta clase está en su pasiva de esquivar (en Personaje.recibir_dano) y crítico
         super().__init__(nombre=f"{nombre} Sombra", puntos_vida=100, puntos_magia=50, ataque=12, defensa=4)
+        self.clase_str = "Picaro"
+
+# --- NUEVA CLASE ---
+class Arquero(Personaje):
+    def __init__(self, nombre: str):
+        # Stats equilibrados, enfocado en daño físico a distancia
+        super().__init__(nombre=f"{nombre} Ojo de Halcon", puntos_vida=90, puntos_magia=40, ataque=18, defensa=3)
+        self.clase_str = "Arquero"

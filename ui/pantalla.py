@@ -6,7 +6,7 @@ import json
 from ui.constantes import *
 from ui.estados import (EstadoMenuPrincipal, EstadoExploracion, EstadoCombate, 
                         EstadoTienda, EstadoFinJuego, EstadoPausa, EstadoInventario, 
-                        EstadoSeleccionClase, EstadoIngresoNombre) # <-- NUEVO ESTADO IMPORTADO
+                        EstadoSeleccionClase, EstadoIngresoNombre)
 from models.personaje import Personaje
 from core.escenario import Escenario
 from models.objeto import Equipamiento, Tesoro, Consumible
@@ -32,10 +32,9 @@ class MotorGrafico:
         self.fuente_grande = pygame.font.Font(None, 45)
         self.fuente_gigante = pygame.font.Font(None, 65)
         
-        # --- INSTANCIACIÓN DE ESTADOS ---
         self.estado_menu = EstadoMenuPrincipal(self)
         self.estado_seleccion_clase = None 
-        self.estado_ingreso_nombre = None # Se instancia después de elegir clase
+        self.estado_ingreso_nombre = None
         self.estado_exploracion = EstadoExploracion(self)
         self.estado_combate = EstadoCombate(self)
         self.estado_tienda = EstadoTienda(self)
@@ -147,6 +146,13 @@ class MotorGrafico:
             except:
                 self.img_cofre_cerrado = None; self.img_cofre_abierto = None
 
+            try:
+                img_flecha_raw = pygame.image.load(os.path.join("assets", "Heroe", "Arrow(projectile)", "Arrow01(32x32).png")).convert_alpha()
+                self.img_flecha = pygame.transform.scale(img_flecha_raw, (40, 40))
+            except Exception as e:
+                print(f"No se pudo cargar la flecha: {e}")
+                self.img_flecha = None
+
             self.imagen_luz = pygame.Surface((500, 500), pygame.SRCALPHA)
             self.imagen_luz.fill((255, 255, 255, 255)) 
             for radio in range(250, 60, -4):
@@ -219,7 +225,8 @@ class MotorGrafico:
                 "puntaje": self.heroe.puntaje, "zonas_exploradas": self.heroe.zonas_exploradas,
                 "arma": serializar_item(self.heroe.arma_equipada) if self.heroe.arma_equipada else None,
                 "armadura": serializar_item(self.heroe.armadura_equipada) if self.heroe.armadura_equipada else None,
-                "inventario": [serializar_item(obj) for obj in self.heroe.inventario]
+                "inventario": [serializar_item(obj) for obj in self.heroe.inventario],
+                "clase_str": getattr(self.heroe, "clase_str", "Aventurero")
             }
         }
         try:
@@ -243,6 +250,7 @@ class MotorGrafico:
             self.heroe.defensa = d_heroe["defensa"]; self.heroe.puntaje = d_heroe["puntaje"]; self.heroe.puntos_magia = d_heroe["puntos_magia"]
             self.heroe.puntos_vida_max = d_heroe["puntos_vida_max"]; self.heroe.puntos_magia_max = d_heroe["puntos_magia_max"]
             self.heroe.nivel = d_heroe["nivel"]; self.heroe.experiencia = d_heroe["experiencia"]; self.heroe.zonas_exploradas = d_heroe["zonas_exploradas"]
+            self.heroe.clase_str = d_heroe.get("clase_str", "Aventurero")
             
             self.heroe.arma_equipada = deserializar_item(d_heroe.get("arma"))
             self.heroe.armadura_equipada = deserializar_item(d_heroe.get("armadura"))
