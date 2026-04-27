@@ -206,3 +206,5 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+# File Save 
+savegame.json
