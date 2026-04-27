@@ -18,31 +18,13 @@ class Zona:
                 Consumible("Pocion de Vida", "HP", 50, 30),
                 Consumible("Pocion de Mana", "MP", 50, 30)
             ]
-            
+            # La tienda se adaptara inteligentemente segun la clase del heroe en el EstadoTienda
             self.armas_por_clase = {
-                "Caballero": [
-                    Equipamiento("Hacha de Combate", "arma", 15, 0, 100, 50),
-                    Equipamiento("Cota de Malla", "armadura", 0, 10, 120, 60),
-                    Equipamiento("Espada Demoniaca", "arma", 25, -2, 300, 150)
-                ],
-                "Mago": [
-                    Equipamiento("Baston Arcano", "arma", 18, 0, 110, 55),
-                    Equipamiento("Tunica Estelar", "armadura", 0, 6, 100, 50),
-                    Equipamiento("Cetro del Vacio", "arma", 28, 0, 320, 160)
-                ],
-                "Picaro": [
-                    Equipamiento("Dagas Gemelas", "arma", 14, 0, 95, 47),
-                    Equipamiento("Traje de Sigilo", "armadura", 0, 8, 110, 55),
-                    Equipamiento("Hojas de Sombra", "arma", 24, 0, 290, 145)
-                ],
-                "Arquero": [
-                    Equipamiento("Arco de Caza", "arma", 16, 0, 105, 52),
-                    Equipamiento("Capa de Viento", "armadura", 0, 7, 105, 52),
-                    Equipamiento("Arco Elfico Supremo", "arma", 26, 0, 310, 155)
-                ],
-                "Aventurero": [
-                    Equipamiento("Espada Oxidada", "arma", 5, 0, 50, 25)
-                ]
+                "Knight": [Equipamiento("Espada Larga", "arma", 15, 0, 100, 50)],
+                "Wizard": [Equipamiento("Baston Arcano", "arma", 18, 0, 110, 55)],
+                "Archer": [Equipamiento("Arco Elfico", "arma", 16, 0, 105, 52)],
+                "Soldier": [Equipamiento("Espada Oxidada", "arma", 5, 0, 50, 25)]
+                # (Puedes agregar mercancia para el resto de clases aqui)
             }
 
 class Escenario:
@@ -51,6 +33,14 @@ class Escenario:
 
     def _generar_mundo(self):
         zonas = []
+        
+        # LISTA DE TUS NUEVOS ENEMIGOS
+        lista_enemigos = [
+            "Armored Orc", "Armored Skeleton", "Elite Orc", 
+            "Greatsword Skeleton", "Orc", "Orc rider", 
+            "Skeleton", "Skeleton Archer", "Slime", "Werebear", "Werewolf"
+        ]
+
         for i in range(20):
             es_tienda = False
             enemigo_zona = None
@@ -62,22 +52,20 @@ class Escenario:
                 nombre = "Refugio del Mercader"
 
             elif i == 19:
-                enemigo_zona = Enemigo("Rey Demonio", puntos_vida=150, ataque=25, defensa=10, tipo="terrestre")
+                enemigo_zona = Enemigo("Rey Demonio", puntos_vida=300, ataque=35, defensa=15, tipo="terrestre")
                 nombre = "Guarida del Rey Demonio"
             else:
                 if random.random() < 0.6:
-                    enemigo_zona = Enemigo("Orco", puntos_vida=40 + i*2, ataque=10 + i, defensa=5, tipo="terrestre")
+                    enemigo_aleatorio = random.choice(lista_enemigos)
+                    # Stats escalan un poco con el avance de nivel (i)
+                    enemigo_zona = Enemigo(enemigo_aleatorio, puntos_vida=40 + i*5, ataque=10 + i*2, defensa=5 + i, tipo="terrestre")
                 
                 if random.random() < 0.4:
                     rand_obj = random.random()
-                    if rand_obj < 0.4:
-                        obj = Tesoro("Girasol Dorado", valor_monetario=50 + i*10)
-                    elif rand_obj < 0.6:
-                        obj = Trampa("Espinas Ocultas", dano_explosion=15 + i*2, alcance_explosion=1)
-                    elif rand_obj < 0.8:
-                        obj = Consumible("Pocion Menor de Vida", "HP", 30)
-                    else:
-                        obj = Equipamiento("Armadura Ligera", "armadura", 0, 5, 50, 25)
+                    if rand_obj < 0.4: obj = Tesoro("Girasol Dorado", valor_monetario=50 + i*10)
+                    elif rand_obj < 0.6: obj = Trampa("Espinas Ocultas", dano_explosion=15 + i*2, alcance_explosion=1)
+                    elif rand_obj < 0.8: obj = Consumible("Pocion Menor de Vida", "HP", 30)
+                    else: obj = Equipamiento("Armadura Ligera", "armadura", 0, 5, 50, 25)
                     
                     obj.x = random.randint(100, 600)
                     obj.y = random.randint(100, 400)

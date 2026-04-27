@@ -22,7 +22,7 @@ class Personaje:
         self.armadura_equipada = None
         self.estados = {"veneno": 0, "aturdido": 0}
         
-        self.clase_str = "Aventurero"
+        self.clase_str = "Soldier"  # Valor por defecto
 
     def aplicar_estado(self, estado: str, turnos: int):
         self.estados[estado] = turnos
@@ -110,22 +110,47 @@ class Personaje:
         self.zonas_exploradas += 1
 
 
-class Caballero(Personaje):
+class Archer(Personaje):
     def __init__(self, nombre: str):
-        super().__init__(nombre=f"Sir {nombre}", puntos_vida=150, puntos_magia=20, ataque=15, defensa=8)
-        self.clase_str = "Caballero"
+        super().__init__(nombre=nombre, puntos_vida=90, puntos_magia=50, ataque=18, defensa=3)
+        self.clase_str = "Archer"
 
-class Mago(Personaje):
+class ArmoredAxeman(Personaje):
     def __init__(self, nombre: str):
-        super().__init__(nombre=f"{nombre} el Sabio", puntos_vida=70, puntos_magia=120, ataque=20, defensa=2)
-        self.clase_str = "Mago"
+        super().__init__(nombre=nombre, puntos_vida=160, puntos_magia=20, ataque=22, defensa=10)
+        self.clase_str = "Armored Axeman"
 
-class Picaro(Personaje):
+class Knight(Personaje):
     def __init__(self, nombre: str):
-        super().__init__(nombre=f"{nombre} Sombra", puntos_vida=100, puntos_magia=50, ataque=12, defensa=4)
-        self.clase_str = "Picaro"
+        super().__init__(nombre=nombre, puntos_vida=150, puntos_magia=30, ataque=16, defensa=12)
+        self.clase_str = "Knight"
 
-class Arquero(Personaje):
+class KnightTemplar(Personaje):
     def __init__(self, nombre: str):
-        super().__init__(nombre=f"{nombre} Ojo de Halcon", puntos_vida=90, puntos_magia=40, ataque=18, defensa=3)
-        self.clase_str = "Arquero"
+        super().__init__(nombre=nombre, puntos_vida=140, puntos_magia=60, ataque=15, defensa=14)
+        self.clase_str = "Knight Templar"
+
+class Lancer(Personaje):
+    def __init__(self, nombre: str):
+        super().__init__(nombre=nombre, puntos_vida=120, puntos_magia=30, ataque=19, defensa=6)
+        self.clase_str = "Lancer"
+
+class Priest(Personaje):
+    def __init__(self, nombre: str):
+        super().__init__(nombre=nombre, puntos_vida=80, puntos_magia=150, ataque=10, defensa=4)
+        self.clase_str = "Priest"
+
+class Soldier(Personaje):
+    def __init__(self, nombre: str):
+        super().__init__(nombre=nombre, puntos_vida=110, puntos_magia=40, ataque=14, defensa=6)
+        self.clase_str = "Soldier"
+
+class Swordsman(Personaje):
+    def __init__(self, nombre: str):
+        super().__init__(nombre=nombre, puntos_vida=100, puntos_magia=35, ataque=20, defensa=5)
+        self.clase_str = "Swordsman"
+
+class Wizard(Personaje):
+    def __init__(self, nombre: str):
+        super().__init__(nombre=nombre, puntos_vida=70, puntos_magia=200, ataque=25, defensa=2)
+        self.clase_str = "Wizard"

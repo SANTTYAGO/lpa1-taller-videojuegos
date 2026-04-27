@@ -92,66 +92,73 @@ class MotorGrafico:
         if self.es_tienda: 
             self.rectangulo_mercader = pygame.Rect(ANCHO_VENTANA // 2 - 32, 200, TAMANO_CELDA, TAMANO_CELDA)
 
-    def _recortar_hoja_sprites(self, ruta_archivo, escala_destino):
+    def _recortar_hoja_sprites(self, ruta_archivo):
         hoja = pygame.image.load(ruta_archivo).convert_alpha()
         alto_frame = hoja.get_height()
         numero_columnas = hoja.get_width() // alto_frame
         lista_frames = []
         for i in range(numero_columnas):
             area_recorte = pygame.Rect(i * alto_frame, 0, alto_frame, alto_frame)
-            lista_frames.append(pygame.transform.scale(hoja.subsurface(area_recorte), escala_destino))
+            lista_frames.append(hoja.subsurface(area_recorte))
         return lista_frames
 
     def cargar_recursos_graficos(self):
         self.usar_sprites = False
         try:
             esc_mapa = (TAMANO_CELDA, TAMANO_CELDA) 
-            esc_personaje = (ESCALA_PERSONAJE, ESCALA_PERSONAJE)
-            self.anim_heroe_idle = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Idle.png"), esc_personaje)
-            self.anim_heroe_walk = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Walk.png"), esc_personaje)
-            self.anim_heroe_attack = self._recortar_hoja_sprites(os.path.join("assets", "Heroe", "Soldier", "Soldier-Attack01.png"), esc_personaje)
-            self.anim_enemigo_idle = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Idle.png"), esc_personaje)
-            self.anim_enemigo_attack = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Attack01.png"), esc_personaje)
-            try: self.anim_enemigo_walk = self._recortar_hoja_sprites(os.path.join("assets", "Enemigo", "Orc", "Orc-Walk.png"), esc_personaje)
-            except: self.anim_enemigo_walk = self.anim_enemigo_idle
+            
+            # --- NUEVO: DICCIONARIOS DE ANIMACIONES ---
+            self.anims_heroes = {}
+            self.anims_enemigos = {}
 
-            self.imagen_suelo = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Suelo", "Grass_Middle.png")).convert(), esc_mapa)
-            try: self.imagen_objeto = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objeto", "item.png")).convert_alpha(), esc_mapa)
+            # 1. CARGA DINÁMICA DE LOS 9 HÉROES
+            nombres_heroes = ["Archer", "Armored Axeman", "Knight", "Knight Templar", "Lancer", "Priest", "Soldier", "Swordsman", "Wizard"]
+            for nombre in nombres_heroes:
+                try:
+                    idle = self._recortar_hoja_sprites(os.path.join("assets", "characters", nombre, f"{nombre}-Idle.png"))
+                    walk = self._recortar_hoja_sprites(os.path.join("assets", "characters", nombre, f"{nombre}-Walk.png"))
+                    
+                    # Intentamos cargar Attack01, si no existe, usamos idle (fallback de seguridad)
+                    try: 
+                        attack = self._recortar_hoja_sprites(os.path.join("assets", "characters", nombre, f"{nombre}-Attack01.png"))
+                    except: 
+                        attack = idle
+                        
+                    self.anims_heroes[nombre] = {"IDLE": idle, "WALK": walk, "ATTACK": attack}
+                except Exception as e: 
+                    print(f"Aviso: Fallo al cargar heroe {nombre}: {e}")
+
+            # 2. CARGA DINÁMICA DE LOS 11 ENEMIGOS
+            nombres_enemigos = ["Armored Orc", "Armored Skeleton", "Elite Orc", "Greatsword Skeleton", "Orc", "Orc rider", "Skeleton", "Skeleton Archer", "Slime", "Werebear", "Werewolf"]
+            for nombre in nombres_enemigos:
+                try:
+                    idle = self._recortar_hoja_sprites(os.path.join("assets", "characters", nombre, f"{nombre}-Idle.png"))
+                    walk = self._recortar_hoja_sprites(os.path.join("assets", "characters", nombre, f"{nombre}-Walk.png"))
+                    
+                    try: 
+                        attack = self._recortar_hoja_sprites(os.path.join("assets", "characters", nombre, f"{nombre}-Attack01.png"))
+                    except: 
+                        attack = idle
+                        
+                    self.anims_enemigos[nombre] = {"IDLE": idle, "WALK": walk, "ATTACK": attack}
+                except Exception as e: 
+                    print(f"Aviso: Fallo al cargar enemigo {nombre}: {e}")
+
+            # --- FIN NUEVO BLOQUE ---
+
+            self.imagen_suelo = pygame.transform.scale(pygame.image.load(os.path.join("assets", "floor", "Grass_Middle.png")).convert(), esc_mapa)
+            
+            # Carga del proyectil, sin rotacion forzada
+            try: 
+                self.img_flecha = pygame.image.load(os.path.join("assets", "weaponry", "Arrow(Projectile)", "Arrow01(32x32).png")).convert_alpha()
+            except: 
+                self.img_flecha = None
+
+            try: self.imagen_objeto = pygame.transform.scale(pygame.image.load(os.path.join("assets", "objects", "bottle_healing", "Sprites", "bottle_healing_00.png")).convert_alpha(), esc_mapa)
             except: self.imagen_objeto = None
 
-            try: self.img_tienda = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Construcciones", "Tienda.png")).convert_alpha(), (TAMANO_CELDA * 2, TAMANO_CELDA * 2))
+            try: self.img_tienda = pygame.transform.scale(pygame.image.load(os.path.join("assets", "building", "Tienda.png")).convert_alpha(), (TAMANO_CELDA * 2, TAMANO_CELDA * 2))
             except: self.img_tienda = None
-
-            try:
-                self.img_monedas_pocas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-stack.png")).convert_alpha(), (16, 16))
-                self.img_monedas_muchas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "assorted-coin-bundle.png")).convert_alpha(), (16, 16))
-            except: 
-                self.img_monedas_pocas = None; self.img_monedas_muchas = None
-
-            try:
-                self.img_pocion_vida = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "bottle Red", "Sprites", "Big Vial - RED - 0000.png")).convert_alpha(), (16, 16))
-                self.img_pocion_mana = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "bottle Blue", "Sprites", "Big Vial - TURQUOISE - 0000.png")).convert_alpha(), (16, 16))
-            except:
-                self.img_pocion_vida = None; self.img_pocion_mana = None
-
-            try:
-                self.img_trampa = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "Small Bomb", "96x96 - SmallBombStaticFrame1.png")).convert_alpha(), (32, 32))
-                self.img_hacha = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Armas", "axe1.png")).convert_alpha(), (32, 32))
-            except:
-                self.img_trampa = None; self.img_hacha = None
-
-            try:
-                self.img_cofre_cerrado = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "chest_closed.png")).convert_alpha(), (40, 40))
-                self.img_cofre_abierto = pygame.transform.scale(pygame.image.load(os.path.join("assets", "Objetos", "chest_open.png")).convert_alpha(), (40, 40))
-            except:
-                self.img_cofre_cerrado = None; self.img_cofre_abierto = None
-
-            try:
-                img_flecha_raw = pygame.image.load(os.path.join("assets", "Heroe", "Arrow(projectile)", "Arrow01(32x32).png")).convert_alpha()
-                self.img_flecha = pygame.transform.scale(img_flecha_raw, (40, 40))
-            except Exception as e:
-                print(f"No se pudo cargar la flecha: {e}")
-                self.img_flecha = None
 
             self.imagen_luz = pygame.Surface((500, 500), pygame.SRCALPHA)
             self.imagen_luz.fill((255, 255, 255, 255)) 
@@ -162,7 +169,7 @@ class MotorGrafico:
 
             self.usar_sprites = True
         except Exception as error: 
-            print(f"Modo grafico simplificado activado. Error: {error}")
+            print(f"Modo gráfico simplificado activado. Error: {error}")
 
     def cargar_sonidos(self):
         self.usar_sonidos = False
