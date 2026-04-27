@@ -24,7 +24,7 @@ class Zona:
                 "Wizard": [Equipamiento("Baston Arcano", "arma", 18, 0, 110, 55)],
                 "Archer": [Equipamiento("Arco Elfico", "arma", 16, 0, 105, 52)],
                 "Soldier": [Equipamiento("Espada Oxidada", "arma", 5, 0, 50, 25)]
-                # (Puedes agregar mercancia para el resto de clases aqui)
+                # (agregar mercancia para el resto de clases aqui)
             }
 
 class Escenario:
@@ -34,7 +34,6 @@ class Escenario:
     def _generar_mundo(self):
         zonas = []
         
-        # LISTA DE TUS NUEVOS ENEMIGOS
         lista_enemigos = [
             "Armored Orc", "Armored Skeleton", "Elite Orc", 
             "Greatsword Skeleton", "Orc", "Orc rider", 
@@ -57,7 +56,6 @@ class Escenario:
             else:
                 if random.random() < 0.6:
                     enemigo_aleatorio = random.choice(lista_enemigos)
-                    # Stats escalan un poco con el avance de nivel (i)
                     enemigo_zona = Enemigo(enemigo_aleatorio, puntos_vida=40 + i*5, ataque=10 + i*2, defensa=5 + i, tipo="terrestre")
                 
                 if random.random() < 0.4:

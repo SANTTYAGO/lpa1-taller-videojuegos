@@ -680,7 +680,6 @@ class EstadoExploracion(EstadoJuego):
                     if self.motor.enemigo_en_zona.direccion_patrulla == -1 or (self.motor.enemigo_en_zona.estado_ia == "PERSIGUIENDO" and self.motor.posicion_jugador_x < self.motor.enemigo_en_zona.x):
                         imagen_enem = pygame.transform.flip(imagen_enem, True, False)
 
-                    # --- CENTRADO DINÁMICO (Sin re-escala) ---
                     pos_e_x = self.motor.rectangulo_enemigo.x - (imagen_enem.get_width() - TAMANO_CELDA) // 2
                     pos_e_y = self.motor.rectangulo_enemigo.y - (imagen_enem.get_height() - TAMANO_CELDA) // 2
                     self.motor.pantalla.blit(imagen_enem, (pos_e_x, pos_e_y))
@@ -699,7 +698,6 @@ class EstadoExploracion(EstadoJuego):
                 if self.motor.mirando_izquierda: 
                     imagen_actual = pygame.transform.flip(imagen_actual, True, False)
                 
-                # --- CENTRADO DINÁMICO (Sin re-escala) ---
                 pos_h_x = self.motor.posicion_jugador_x - (imagen_actual.get_width() - TAMANO_CELDA) // 2
                 pos_h_y = self.motor.posicion_jugador_y - (imagen_actual.get_height() - TAMANO_CELDA) // 2
                 self.motor.pantalla.blit(imagen_actual, (pos_h_x, pos_h_y))
@@ -724,7 +722,6 @@ class EstadoCombate(EstadoJuego):
         self.progreso_proyectil = 0.0
         self.tipo_proyectil = ""
         self.datos_post_animacion = {}
-        # Coordenadas estáticas relativas para simular el campo de batalla
         self.start_x, self.start_y = 225, 225 
         self.end_x, self.end_y = 575, 225
 
@@ -873,7 +870,6 @@ class EstadoCombate(EstadoJuego):
             else: 
                 img_heroe = anim_h["IDLE"][self.motor.indice_animacion % len(anim_h["IDLE"])]
                 
-            # --- DIBUJADO DE COMBATE (Sin redimensionar) ---
             self.motor.pantalla.blit(pygame.transform.scale(img_heroe, (250, 250)), (100, 100))
 
             clase_enemigo = self.motor.enemigo_en_zona.nombre

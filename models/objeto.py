@@ -6,7 +6,6 @@ class Objeto:
         self.valor_monetario = valor_monetario
         self.x = 0
         self.y = 0
-        # --- NUEVO: Estado del cofre ---
         self.esta_en_cofre = True
 
 class Tesoro(Objeto):
