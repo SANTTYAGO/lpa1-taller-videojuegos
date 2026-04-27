@@ -143,21 +143,21 @@ class MotorGrafico:
             except: self.img_tienda = None
 
             try:
-                self.img_pocion_vida = pygame.transform.scale(pygame.image.load(os.path.join("assets", "objects", "bottle_healing", "Sprites", "bottle_healing_00.png")).convert_alpha(), (32, 32))
-                self.img_pocion_mana = pygame.transform.scale(pygame.image.load(os.path.join("assets", "objects", "bottle_mana", "Sprites", "bottle_mana_00.png")).convert_alpha(), (32, 32))
+                self.img_pocion_vida = pygame.transform.scale(pygame.image.load(os.path.join("assets", "objects", "bottle_healing", "Sprites", "bottle_healing_00.png")).convert_alpha(), (16, 16))
+                self.img_pocion_mana = pygame.transform.scale(pygame.image.load(os.path.join("assets", "objects", "bottle_mana", "Sprites", "bottle_mana_00.png")).convert_alpha(), (16, 16))
                 self.imagen_objeto = self.img_pocion_vida
             except: self.img_pocion_vida = None; self.img_pocion_mana = None; self.imagen_objeto = None
 
             try:
-                self.img_monedas_muchas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "objects", "assorted-coin-bundle.png")).convert_alpha(), (32, 32))
-                self.img_monedas_pocas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "objects", "assorted-coin-stack.png")).convert_alpha(), (32, 32))
+                self.img_monedas_muchas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "objects", "assorted-coin-bundle.png")).convert_alpha(), (16, 16))
+                self.img_monedas_pocas = pygame.transform.scale(pygame.image.load(os.path.join("assets", "objects", "assorted-coin-stack.png")).convert_alpha(), (16, 16))
             except: self.img_monedas_muchas = None; self.img_monedas_pocas = None
 
             try: self.img_trampa = pygame.transform.scale(pygame.image.load(os.path.join("assets", "objects", "Bomb", "BombStaticFrame1.png")).convert_alpha(), (32, 32))
             except: self.img_trampa = None
             
-            try: self.img_hacha = pygame.transform.scale(pygame.image.load(os.path.join("assets", "weaponry", "axe1.png")).convert_alpha(), (32, 32))
-            except: self.img_hacha = None
+            # try: self.img_hacha = pygame.transform.scale(pygame.image.load(os.path.join("assets", "weaponry", "axe1.png")).convert_alpha(), (32, 32))
+            # except: self.img_hacha = None
 
             self.imagen_luz = pygame.Surface((500, 500), pygame.SRCALPHA)
             self.imagen_luz.fill((255, 255, 255, 255)) 
