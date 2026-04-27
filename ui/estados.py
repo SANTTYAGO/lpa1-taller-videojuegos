@@ -7,7 +7,6 @@ from ui.constantes import *
 from ui.elementos import TextoFlotante
 from core.combate import AtaqueBasico, GolpeEspecial, Curacion, AtaqueEnemigo
 from models.objeto import Equipamiento, Consumible, Tesoro, Trampa 
-# Importamos todas las clases dinámicamente
 from models.personaje import Archer, ArmoredAxeman, Knight, KnightTemplar, Lancer, Priest, Soldier, Swordsman, Wizard
 
 COLOR_VENENO = (148, 0, 211)
@@ -875,7 +874,7 @@ class EstadoCombate(EstadoJuego):
                 img_heroe = anim_h["IDLE"][self.motor.indice_animacion % len(anim_h["IDLE"])]
                 
             # --- DIBUJADO DE COMBATE (Sin redimensionar) ---
-            self.motor.pantalla.blit(img_heroe, (100, 100))
+            self.motor.pantalla.blit(pygame.transform.scale(img_heroe, (250, 250)), (100, 100))
 
             clase_enemigo = self.motor.enemigo_en_zona.nombre
             anim_e = self.motor.anims_enemigos.get(clase_enemigo, self.motor.anims_enemigos.get("Orc"))
@@ -886,7 +885,7 @@ class EstadoCombate(EstadoJuego):
             else: 
                 img_enemigo = anim_e["IDLE"][self.motor.indice_animacion % len(anim_e["IDLE"])]
                 
-            # Giramos pero NO redimensionamos
+            img_enemigo = pygame.transform.scale(img_enemigo, (250, 250))
             img_enemigo_flipped = pygame.transform.flip(img_enemigo, True, False)
             self.motor.pantalla.blit(img_enemigo_flipped, (450, 100))
             
